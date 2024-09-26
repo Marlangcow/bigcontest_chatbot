@@ -1,0 +1,11 @@
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# LangSmith 추적을 설정합니다. https://smith.langchain.com
+# !pip install langchain-teddynote
+from langchain_teddynote import logging
+from langchain_teddynote.messages import stream_response
+
+# 프로젝트 이름을 입력합니다.
+logging.langsmith("BIGCONTEST_CHATBOT")
