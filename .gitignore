@@ -1,5 +1,10 @@
 .streamlit/secrets.toml
 
+*.csv
+*.index
+*.npy
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
