@@ -1234,7 +1234,6 @@ def generate_response(user_input):
     # 검색된 결과를 텍스트 형식으로 변환
     search_results_str = "\n".join([result.to_string() for result in search_results])
 
-
     # PromptTemplate에 검색된 결과와 대화 기록 채우기
     filled_prompt = prompt_template.format(
         input_text=user_input,
