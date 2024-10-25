@@ -1,17 +1,12 @@
 import os
 from dotenv import load_dotenv
-
 import numpy as np
 import pandas as pd
 import streamlit as st
-import langchain.chat_models
-
-from transformers import AutoTokenizer, AutoModel
-from langchain.memory import ConversationBufferMemory
-from langchain.prompts import PromptTemplate
 from sentence_transformers import SentenceTransformer
 from langchain_google_genai import ChatGoogleGenerativeAI
-
+from langchain.memory import ConversationBufferMemory
+from langchain.prompts import PromptTemplate
 import faiss
 
 # Streamlit 페이지 설정
@@ -23,18 +18,12 @@ st.info("제주도 여행 메이트 감귤톡이 제주도의 방방곡곡을 �
 
 # 이미지 로드 설정
 if 'image_loaded' not in st.session_state:
-    st.session_state.image_loaded = True
     st.session_state.image_html = """
     <div style="display: flex; justify-content: center;">
         <img src="https://img4.daumcdn.net/thumb/R658x0.q70/?fname=https://t1.daumcdn.net/news/202105/25/linkagelab/20210525013157546odxh.jpg" alt="centered image" width="50%">
     </div>
     """
-
-# # 이미지 표시 (세션 상태에서 확인)
-# if st.session_state.image_loaded:
-#     st.markdown(st.session_state.image_html, unsafe_allow_html=True)
-#     # 이미지가 표시된 후 다시 상태를 False로 변경하여 중복 표시 방지
-#     st.session_state.image_loaded = False
+    st.session_state.image_loaded = True
 
 st.write("")  # 여백 추가
 
@@ -61,29 +50,50 @@ def load_data():
 
 dfs = load_data()
 
+# LLM에서 사용할 함수 tool 생성
+def create_tool(name, description, required_params):
+    return {
+        "type": "function",
+        "function": {
+            "name": name,
+            "description": description,
+            "parameters": {
+                "type": "object",
+                "properties": {param: {"type": "string", "description": f"{param}에 대한 설명"} for param in required_params},
+                "required": required_params
+            }
+        }
+    }
+
+# 각각의 툴 생성
+review_tool = create_tool("get_review_data", "맛집과 관광지 리뷰 정보를 가져옵니다.", ["장소"])
+mct_tool = create_tool("get_mct_data", "MCT 문서의 정보를 조회합니다.", ["가게명"])
+trrsrt_tool = create_tool("get_trrsrt_data", "관광지 문서의 정보를 조회합니다.", ["관광지명"])
+
+tools = [review_tool, mct_tool, trrsrt_tool]
 
 
-# FAISS 인덱스 파일 경로
+# FAISS 인덱스 및 임베딩 모델 로드
 faiss_index_path = './modules/faiss_index.index'
-
-# FAISS 인덱스 로드
 faiss_index = faiss.read_index(faiss_index_path)
 
+
 # 임베딩 모델 로드
-@st.cache_data
 def load_model():
     return SentenceTransformer('jhgan/ko-sroberta-multitask')
 
 model_embedding = load_model()
 
 
-# Google Generative AI API 설정
-chat_model = ChatGoogleGenerativeAI(model='gemini-1.5-flash',
-                                    api_key=google_api_key,
-                                    temperature=0.3,  
-                                    top_p=0.85,       
-                                    frequency_penalty=0.3
+# LLM 설정
+chat_model = ChatGoogleGenerativeAI(
+    model='gemini-1.5-flash',
+    api_key=google_api_key,
+    temperature=0.3,
+    top_p=0.85,
+    frequency_penalty=0.3
 )
+
 
 # 멀티턴 대화를 위한 Memory 설정
 memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
@@ -117,7 +127,7 @@ prompt_template = PromptTemplate(
     4. 추천 할 때, 추천 이유와 소요되는 거리, 평점과 리뷰들도 보여줘. 만약 리뷰가 없는 곳이라면 ("작성된 리뷰가 없습니다.") 라고 해주세요.
     5. 4번의 지시사항과 함께 판매 메뉴 2개, 가격도 알려주세요.
     6. 위도와 경도를 바탕으로 실제 검색되는 장소를 https://map.naver.com/p/search/제주도 <placename>장소이름</placename>으로 답변하세요. 단, 지도 링크가 없는 곳은 지도 링크라는 문구를 아예 노출하지 말아주세요.
-        예시 링크는 다음과 같습니다. <placename> 태그는 알기 쉽게 구분 해 놓은 값이며, 절대 링크와 답변에 삽입되어서는 안됩니다.
+        예시 링크는 다음과 같습니다. <placename> 태그는 알기 쉽게 구분 해 놓은 값이며, 절대 링크내에 삽입되어서는 안됩니다.
         - https://map.naver.com/p/search/제주도+우진해장국/
         - https://map.naver.com/p/search/제주도+카페봄날/
         - https://map.naver.com/p/search/제주도+고흐의정원/
@@ -138,51 +148,47 @@ prompt_template = PromptTemplate(
 
 # 검색 및 응답 생성 함수
 def search_faiss(query_embedding, k=5):
-    """
-    FAISS에서 유사한 벡터를 검색하여 원본 데이터 반환
-    """
-    # FAISS 인덱스에서 유사한 벡터 검색
     distances, indices = faiss_index.search(np.array(query_embedding, dtype=np.float32), k)
-
-    # 검색된 인덱스를 바탕으로 원본 데이터 가져오기
     search_results = []
-    total_length = 0  # 전체 길이 초기화
 
     for idx in indices[0]:
-        found = False  # 찾은 데이터프레임 체크
         for df in dfs:
-            if total_length + len(df) > idx:  # 현재 데이터프레임에서 유효한 인덱스인지 체크
-                if idx - total_length >= 0 and idx - total_length < len(df):
-                    search_results.append(df.iloc[idx - total_length])  # 인덱스 재조정
-                found = True
+            if idx < len(df):
+                search_results.append(df.iloc[idx])
                 break
-            total_length += len(df)  # 전체 길이에 데이터프레임 길이 추가
-        if found:  # 이미 찾은 경우 더 이상 반복할 필요 없음
-            continue
+            idx -= len(df)
 
     return search_results
 
 
 # 대화형 응답 생성 함수
 def generate_response(user_input):
-    """
-    사용자의 입력을 받아 FAISS 검색 후 응답 생성 (COT 적용)
-    """
-    # 사용자의 질문을 임베딩으로 변환
     query_embedding = model_embedding.encode([user_input])
-
-    # FAISS 검색 수행
     search_results = search_faiss(query_embedding)
 
-    # 검색된 결과를 텍스트 형식으로 변환
     search_results_str = "\n".join([result.to_string() for result in search_results])
-
-    # PromptTemplate에 검색된 결과와 대화 기록 채우기
-    filled_prompt = prompt_template.format(
+    
+    filled_prompt = prompt_template(
         input_text=user_input,
         search_results=search_results_str,
         chat_history=memory.load_memory_variables({})["chat_history"]
     )
+
+    response = chat_model.invoke([{"role": "user", "content": filled_prompt}], tools=tools)
+
+    # 응답 처리
+    result = response.content
+    if response["finish_reason"] == "function_call":
+        function_data = response["tool_call"]["arguments"]
+        if "리뷰" in function_data:
+            result = get_review_data(**function_data)
+        elif "가게명" in function_data:
+            result = get_mct_data(**function_data)
+        elif "관광지명" in function_data:
+            result = get_trrsrt_data(**function_data)
+
+    memory.save_context({"input": user_input}, {"output": result})
+    return result
 
     # 1회 호출에서 5000 토큰 제한이므로 적절하게 텍스트를 나누어 처리
     response_parts = []
@@ -209,7 +215,7 @@ def generate_response(user_input):
 
 # 스트림릿 챗봇 인터페이스
 if 'messages' not in st.session_state:
-    st.session_state.messages = []  # messages 초기화
+    st.session_state.messages = []
 
 # 이미지 표시 (세션 상태 유지)
 st.markdown(st.session_state.image_html, unsafe_allow_html=True)
@@ -223,22 +229,8 @@ if prompt := st.chat_input():
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.write(prompt)
+    response = generate_response(prompt)
+    st.session_state.messages.append({"role": "assistant", "content": response})
+    with st.chat_message("assistant"):
+        st.write(response)
 
-    # 마지막 메시지가 어시스턴트의 메시지가 아닐 경우 새 응답 생성
-    if st.session_state.messages[-1]["role"] != "assistant":
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                response = generate_response(prompt)
-                placeholder = st.empty()
-                full_response = ''  # 응답 초기화
-
-                # 응답을 문자열로 변환
-                if isinstance(response, str):
-                    full_response = response
-                else:
-                    full_response = response.text  
-
-                # 전체 응답 표시
-                placeholder.markdown(full_response)
-        message = {"role": "assistant", "content": full_response}
-        st.session_state.messages.append(message)
