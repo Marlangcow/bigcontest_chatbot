@@ -82,8 +82,7 @@ chat_model = ChatGoogleGenerativeAI(model='gemini-1.5-flash',
                                     api_key=google_api_key,
                                     temperature=0.3,  
                                     top_p=0.85,       
-                                    frequency_penalty=0.3
-)
+                                    frequency_penalty=0.3)
 
 # 멀티턴 대화를 위한 Memory 설정
 memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
@@ -95,6 +94,7 @@ prompt_template = PromptTemplate(
    ### 역할
     당신은 제주도 맛집과 관광지 추천 전문가입니다. 질문을 받을 때 논리적으로 생각한 후 단계별로 답변을 제공합니다.
     복잡한 질문일수록 천천히 생각하고 검색된 데이터를 바탕으로 답변을 제공합니다.
+    검색된 데이터 이외의 답변은 하지 마세요.
 
     ### Chain of Thought 방식 적용:
     1. 사용자의 질문을 단계별로 분석합니다.
@@ -117,7 +117,7 @@ prompt_template = PromptTemplate(
     4. 추천 할 때, 추천 이유와 소요되는 거리, 평점과 리뷰들도 보여줘. 만약 리뷰가 없는 곳이라면 ("작성된 리뷰가 없습니다.") 라고 해주세요.
     5. 4번의 지시사항과 함께 판매 메뉴 2개, 가격도 알려주세요.
     6. 위도와 경도를 바탕으로 실제 검색되는 장소를 https://map.naver.com/p/search/제주도 <placename>장소이름</placename>으로 답변하세요. 단, 지도 링크가 없는 곳은 지도 링크라는 문구를 아예 노출하지 말아주세요.
-        예시 링크는 다음과 같습니다. <placename> 태그는 알기 쉽게 구분 해 놓은 값이며, 절대 링크와 답변에 삽입되어서는 안됩니다.
+        예시 링크는 다음과 같습니다. <placename> 태그는 알기 쉽게 구분 해 놓은 값이며, 절대 링크내에 삽입되어서는 안됩니다.
         - https://map.naver.com/p/search/제주도+우진해장국/
         - https://map.naver.com/p/search/제주도+카페봄날/
         - https://map.naver.com/p/search/제주도+고흐의정원/

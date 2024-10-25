@@ -11,6 +11,8 @@ from langchain.memory import ConversationBufferMemory
 from langchain.prompts import PromptTemplate
 from sentence_transformers import SentenceTransformer
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.embeddings import Embeddings
+from langchain.retrievers import FAISSRetriever
 
 import faiss
 
@@ -30,12 +32,6 @@ if 'image_loaded' not in st.session_state:
     </div>
     """
 
-# # 이미지 표시 (세션 상태에서 확인)
-# if st.session_state.image_loaded:
-#     st.markdown(st.session_state.image_html, unsafe_allow_html=True)
-#     # 이미지가 표시된 후 다시 상태를 False로 변경하여 중복 표시 방지
-#     st.session_state.image_loaded = False
-
 st.write("")  # 여백 추가
 
 # .env 파일 경로 지정
@@ -44,8 +40,6 @@ google_api_key = os.getenv("GOOGLE_API_KEY")
 
 # CSV 파일 로드
 @st.cache_data
-
-# CSV 파일 로드
 def load_data():
     csv_file_paths = [
         './data/review_documents.csv',
@@ -59,9 +53,9 @@ def load_data():
     
     return dfs
 
-dfs = load_data()
-
-
+# 로드된 데이터프레임을 세션 상태에 저장하여 재로드 방지
+if 'dfs' not in st.session_state:
+    st.session_state.dfs = load_data()
 
 # FAISS 인덱스 파일 경로
 faiss_index_path = './modules/faiss_index.index'
@@ -76,14 +70,12 @@ def load_model():
 
 model_embedding = load_model()
 
-
 # Google Generative AI API 설정
 chat_model = ChatGoogleGenerativeAI(model='gemini-1.5-flash',
                                     api_key=google_api_key,
                                     temperature=0.3,  
                                     top_p=0.85,       
-                                    frequency_penalty=0.3
-)
+                                    frequency_penalty=0.3)
 
 # 멀티턴 대화를 위한 Memory 설정
 memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
@@ -117,7 +109,7 @@ prompt_template = PromptTemplate(
     4. 추천 할 때, 추천 이유와 소요되는 거리, 평점과 리뷰들도 보여줘. 만약 리뷰가 없는 곳이라면 ("작성된 리뷰가 없습니다.") 라고 해주세요.
     5. 4번의 지시사항과 함께 판매 메뉴 2개, 가격도 알려주세요.
     6. 위도와 경도를 바탕으로 실제 검색되는 장소를 https://map.naver.com/p/search/제주도 <placename>장소이름</placename>으로 답변하세요. 단, 지도 링크가 없는 곳은 지도 링크라는 문구를 아예 노출하지 말아주세요.
-        예시 링크는 다음과 같습니다. <placename> 태그는 알기 쉽게 구분 해 놓은 값이며, 절대 링크와 답변에 삽입되어서는 안됩니다.
+        예시 링크는 다음과 같습니다. <placename> 태그는 알기 쉽게 구분 해 놓은 값이며, 절대 링크내에 삽입되어서는 안됩니다.
         - https://map.naver.com/p/search/제주도+우진해장국/
         - https://map.naver.com/p/search/제주도+카페봄날/
         - https://map.naver.com/p/search/제주도+고흐의정원/
@@ -136,43 +128,19 @@ prompt_template = PromptTemplate(
     """
 )
 
-# 검색 및 응답 생성 함수
-def search_faiss(query_embedding, k=5):
-    """
-    FAISS에서 유사한 벡터를 검색하여 원본 데이터 반환
-    """
-    # FAISS 인덱스에서 유사한 벡터 검색
-    distances, indices = faiss_index.search(np.array(query_embedding, dtype=np.float32), k)
-
-    # 검색된 인덱스를 바탕으로 원본 데이터 가져오기
-    search_results = []
-    total_length = 0  # 전체 길이 초기화
-
-    for idx in indices[0]:
-        found = False  # 찾은 데이터프레임 체크
-        for df in dfs:
-            if total_length + len(df) > idx:  # 현재 데이터프레임에서 유효한 인덱스인지 체크
-                if idx - total_length >= 0 and idx - total_length < len(df):
-                    search_results.append(df.iloc[idx - total_length])  # 인덱스 재조정
-                found = True
-                break
-            total_length += len(df)  # 전체 길이에 데이터프레임 길이 추가
-        if found:  # 이미 찾은 경우 더 이상 반복할 필요 없음
-            continue
-
-    return search_results
-
+# FAISS Retriever 설정
+retriever = FAISSRetriever(index=faiss_index, dfs=st.session_state.dfs)
 
 # 대화형 응답 생성 함수
 def generate_response(user_input):
     """
-    사용자의 입력을 받아 FAISS 검색 후 응답 생성 (COT 적용)
+    사용자의 입력을 받아 FAISS 검색 후 응답 생성
     """
     # 사용자의 질문을 임베딩으로 변환
     query_embedding = model_embedding.encode([user_input])
 
     # FAISS 검색 수행
-    search_results = search_faiss(query_embedding)
+    search_results = retriever.retrieve(query_embedding)
 
     # 검색된 결과를 텍스트 형식으로 변환
     search_results_str = "\n".join([result.to_string() for result in search_results])
@@ -184,27 +152,14 @@ def generate_response(user_input):
         chat_history=memory.load_memory_variables({})["chat_history"]
     )
 
-    # 1회 호출에서 5000 토큰 제한이므로 적절하게 텍스트를 나누어 처리
-    response_parts = []
-    while filled_prompt:
-        # 최대 5000 토큰까지 잘라서 호출
-        part = filled_prompt[:5000]
-        filled_prompt = filled_prompt[5000:]
-
-        # Google Generative AI API 호출 (대신 사용할 모델로 수정 가능)
-        response = chat_model.invoke([{"role": "user", "content": part}])
-        response_parts.append(response.content)
-
-        # 호출 횟수 체크
-        if len(response_parts) >= 3:
-            break  # 최대 3회 호출 제한
+    # Google Generative AI API 호출
+    response = chat_model.invoke([{"role": "user", "content": filled_prompt}])
 
     # 메모리에 대화 기록 저장
-    for part in response_parts:
-        memory.save_context({"input": user_input}, {"output": part})
+    memory.save_context({"input": user_input}, {"output": response.content})
 
-    # 최종 응답 합치기
-    return "\n".join(response_parts)
+    return response.content
+
 
 
 # 스트림릿 챗봇 인터페이스
