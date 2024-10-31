@@ -9,8 +9,10 @@ options.add_argument('--headless')  # 브라우저 창 숨김
 options.add_argument('window-size=1920x1080')  # 창 크기 설정
 driver = webdriver.Chrome(options=options)
 
-# 수집할 기본 URL
+# 수집할 기본 URL 및 페이지 수 설정
 base_url = "https://visitjeju.net/kr/detail/view?contentsid="
+menu_id = "DOM_000001719000000000"  # 메뉴 ID
+total_pages = 172  # 페이지 수 (1부터 127까지)
 
 # CSV 파일에서 contents_id 읽기
 content_ids_df = pd.read_csv('food_site_id.csv')
@@ -19,41 +21,43 @@ content_ids = content_ids_df['Content ID'].tolist()  # 'Content ID'라는 열에
 # 데이터를 저장할 리스트
 data = []
 
-# 각 URL에서 데이터 수집
+# 각 콘텐츠 ID에 대해 데이터 수집
 for idx, content_id in enumerate(content_ids, start=1):
-    url = f"{base_url}{content_id}&menuId=DOM_000001719000000000#p1"
-    
-    print(f"수집 중: {idx}/{len(content_ids)} - 콘텐츠 ID: {content_id}")  # 진행 상황 출력
-    
-    # 페이지 로드
-    driver.get(url)
-    time.sleep(5)  # 페이지 로딩 대기 시간
+    # 페이지 수에 따라 URL을 동적으로 설정
+    for page_num in range(1, total_pages + 1):
+        url = f"{base_url}{content_id}&menuId={menu_id}#p{page_num}"
+        
+        print(f"수집 중: {idx}/{len(content_ids)} - 콘텐츠 ID: {content_id} - 페이지: {page_num}")  # 진행 상황 출력
+        
+        # 페이지 로드
+        driver.get(url)
+        time.sleep(5)  # 페이지 로딩 대기 시간
 
-    # 현재 페이지의 HTML 소스를 가져오기
-    page_source = driver.page_source
-    soup = BeautifulSoup(page_source, 'html.parser')
+        # 현재 페이지의 HTML 소스를 가져오기
+        page_source = driver.page_source
+        soup = BeautifulSoup(page_source, 'html.parser')
 
-    # h3 요소 가져오기
-    h3_element = soup.find('h3')
-    h3_text = h3_element.text.strip() if h3_element else 'N/A'
+        # h3 요소 가져오기
+        h3_element = soup.find('h3')
+        h3_text = h3_element.text.strip() if h3_element else 'N/A'
 
-    # class="tag_area"에서 best_tag와 다른 p 태그 가져오기
-    tag_area_element = soup.find(class_='tag_area')
-    best_tags = [a.text.strip() for a in tag_area_element.find_all('a')] if tag_area_element else []
-    p_elements = tag_area_element.find_all('p') if tag_area_element else []
-    p_texts = [p.text.strip() for p in p_elements if p.text.strip()]
+        # class="tag_area"에서 best_tag와 다른 p 태그 가져오기
+        tag_area_element = soup.find(class_='tag_area')
+        best_tags = [a.text.strip() for a in tag_area_element.find_all('a')] if tag_area_element else []
+        p_elements = tag_area_element.find_all('p') if tag_area_element else []
+        p_texts = [p.text.strip() for p in p_elements if p.text.strip()]
 
-    # class="info_sub_cont" 요소 가져오기
-    info_elements = soup.find_all(class_='info_sub_cont')
-    info_dict = {info.find_previous_sibling('p').text.strip(): info.text.strip() for info in info_elements}
+        # class="info_sub_cont" 요소 가져오기
+        info_elements = soup.find_all(class_='info_sub_cont')
+        info_dict = {info.find_previous_sibling('p').text.strip(): info.text.strip() for info in info_elements}
 
-    # 수집한 데이터 저장
-    data.append({
-        "Title": h3_text,
-        "Best Tags": ', '.join(best_tags),
-        "Additional P Texts": ', '.join(p_texts),
-        **info_dict  # 기본 정보 추가
-    })
+        # 수집한 데이터 저장
+        data.append({
+            "Title": h3_text,
+            "Best Tags": ', '.join(best_tags),
+            "Additional P Texts": ', '.join(p_texts),
+            **info_dict  # 기본 정보 추가
+        })
 
 # DataFrame으로 변환
 df = pd.DataFrame(data)
