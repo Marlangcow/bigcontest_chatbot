@@ -1,5 +1,6 @@
 import time
 import pandas as pd
+import os  # 파일 확인용
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -32,10 +33,18 @@ category_nums = [
 ]
 
 base_url = "https://visitjeju.net/kr/detail/view?contentsid="
+temp_file = 'temp_total_site_data.csv'  # 임시 파일
 
-# 콘텐츠 ID를 저장할 리스트
-content_ids = []
-data = []  # 세부 데이터를 저장할 리스트
+# 임시 파일이 있으면 기존 데이터 불러오기
+if os.path.exists(temp_file):
+    existing_data = pd.read_csv(temp_file)
+    content_ids = existing_data["Content ID"].tolist()  # 이미 수집된 콘텐츠 ID
+    data = existing_data.to_dict('records')  # 기존 데이터를 리스트로 변환
+    print(f"임시 파일에서 {len(content_ids)}개의 콘텐츠 ID를 불러왔습니다.")
+else:
+    content_ids = []
+    data = []
+
 batch_size = 10  # 배치 크기 설정
 
 # 콘텐츠 ID 수집
@@ -57,7 +66,7 @@ for menu_id, category_num in zip(menu_ids, category_nums):
         for link in content_links:
             if 'contentsid=' in link['href']:  
                 content_id = link['href'].split('contentsid=')[1].split('&')[0]
-                if content_id not in content_ids:
+                if content_id not in content_ids:  # 중복 확인
                     content_ids.append(content_id)
                     page_content_ids.append(content_id)
                     print(f"추출된 콘텐츠 ID: {content_id}")
@@ -70,7 +79,7 @@ for menu_id, category_num in zip(menu_ids, category_nums):
         page_num += 1
 
 # 수집한 콘텐츠 ID로 세부 정보 수집
-for idx, content_id in enumerate(content_ids, start=1):
+for idx, content_id in enumerate(content_ids[len(data):], start=len(data) + 1):  # 기존 데이터 수만큼 건너뜀
     url = f"{base_url}{content_id}&menuId={menu_id}"
     print(f"수집 중: {idx}/{len(content_ids)} - 콘텐츠 ID: {content_id}")
 
@@ -110,8 +119,8 @@ for idx, content_id in enumerate(content_ids, start=1):
         # batch_size 단위로 임시 저장
         if idx % batch_size == 0:
             temp_df = pd.DataFrame(data)
-            temp_df.to_csv('temp_total_site_data.csv', index=False, encoding='utf-8-sig')
-            print(f"{idx}개 데이터까지 임시 저장 완료: 'temp_total_site_data.csv'")
+            temp_df.to_csv(temp_file, index=False, encoding='utf-8-sig')
+            print(f"{idx}개 데이터까지 임시 저장 완료: '{temp_file}'")
             
     except Exception as e:
         print(f"콘텐츠 ID {content_id}에서 데이터를 가져오지 못했습니다: {e}")
