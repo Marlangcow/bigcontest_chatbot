@@ -52,5 +52,5 @@ print(content_ids)
 
 # DataFrame으로 변환 후 CSV로 저장
 df = pd.DataFrame(content_ids, columns=["Content ID"])
-df.to_csv('jeju_content_ids.csv', index=False, encoding='utf-8-sig')
-print("콘텐츠 ID 수집 완료! 'jeju_content_ids.csv' 파일로 저장되었습니다.")
+df.to_csv('tour_site_ids.csv', index=False, encoding='utf-8-sig')
+print("콘텐츠 ID 수집 완료! 'tour_site_ids.csv' 파일로 저장되었습니다.")

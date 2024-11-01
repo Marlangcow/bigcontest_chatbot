@@ -11,8 +11,8 @@ options.add_argument('window-size=1920x1080')  # 창 크기 설정
 driver = webdriver.Chrome(options=options)
 
 # 수집할 기본 URL 및 페이지 수 설정
-menu_id = "DOM_000001720000000000"  # 메뉴 ID
-total_pages = 24  # 페이지 수 (1부터 127까지)
+menu_id = "DOM_000001720000000000"  # 쇼핑 ID
+total_pages = 24  # 페이지 수
 
 # 콘텐츠 ID를 저장할 리스트
 content_ids = []
@@ -20,8 +20,8 @@ content_ids = []
 # 각 페이지 반복
 for page_num in range(1, total_pages + 1):
     print(f"수집 중: 페이지 {page_num}/{total_pages}")  # 진행 상황 출력
-    url = f"https://visitjeju.net/kr/detail/list?menuId={menu_id}&page={page_num}"
-
+    url = f"https://visitjeju.net/kr/detail/list?menuId={menu_id}#p{page_num}"
+    print(url)
     # 드라이버로 URL 접근
     driver.get(url)
     time.sleep(5)  # 페이지 로딩 대기 (필요에 따라 조정)

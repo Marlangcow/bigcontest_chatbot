@@ -1,0 +1,80 @@
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+import re
+
+# URL에서 콘텐츠 ID 추출 함수
+def extract_content_ids(category_id, page_url):
+    response = requests.get(page_url)
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, 'html.parser')
+        content_ids = set()  # 중복 제거를 위한 set 사용
+
+        # 콘텐츠 ID 추출: 카테고리에 따라 링크에서 콘텐츠 ID를 찾음
+        for link in soup.find_all('a', href=True):
+            match = re.search(r'contentsid=(CONT_\d+|CNTS_\d+)', link['href'])
+            if match:
+                content_ids.add(match.group(0))  # 'contentsid=CONT_xxxxxx' 형식으로 추가
+
+        return content_ids
+    else:
+        print(f"Failed to fetch the page. Status code: {response.status_code}")
+        return set()
+
+# 여러 페이지에서 콘텐츠 ID를 추출
+base_url = "https://visitjeju.net/kr/list?page="
+categories = {
+    "관광지": "DOM_000001718000000000",
+    "음식": "DOM_000001719000000000",
+    "숙박": "DOM_000001707000000000",
+    "쇼핑": "DOM_000001720000000000"
+}
+
+all_content_ids = set()
+
+# 각 카테고리에 대해 콘텐츠 ID 수집
+for category_id in categories.values():
+    for page in range(1, 6):  # 1페이지부터 5페이지까지
+        print(f"Extracting content IDs for category {category_id} from page {page}...")
+        all_content_ids.update(extract_content_ids(category_id, base_url + str(page)))
+
+# 콘텐츠 ID 리스트 생성
+urls = [
+    f"https://visitjeju.net/kr/detail/view?{content_id}&menuId={category_id}#p1"
+    for content_id in all_content_ids
+    for category_id in categories.values()
+]
+
+# 데이터를 저장할 리스트
+data = []
+
+for url in urls:
+    print(f"Requesting URL: {url}")
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # 제목과 내용을 CSS 선택자를 통해 가져오기 (CSS 선택자는 사이트 구조에 맞게 조정 필요)
+        title = soup.select_one("h1.title")  # 제목의 CSS 선택자
+        content = soup.select_one("div.content")  # 내용의 CSS 선택자
+
+        if title and content:
+            data.append({
+                "title": title.get_text(strip=True),
+                "content": content.get_text(strip=True)
+            })
+        else:
+            print(f"No data found for URL: {url}")
+    else:
+        print(f"Failed to fetch the page. Status code: {response.status_code}")
+
+# DataFrame 생성
+df = pd.DataFrame(data)
+
+# CSV 파일로 저장
+if not df.empty:
+    df.to_csv("jeju_data.csv", index=False)
+    print("데이터가 jeju_data.csv에 저장되었습니다.")
+else:
+    print("수집된 데이터가 없습니다.")

@@ -11,8 +11,7 @@ driver = webdriver.Chrome(options=options)
 
 # 수집할 기본 URL 및 페이지 수 설정
 base_url = "https://visitjeju.net/kr/detail/view?contentsid="
-menu_id = "DOM_000001719000000000"  # 메뉴 ID
-total_pages = 172  # 페이지 수 (1부터 127까지)
+menu_id = "DOM_000001719000000000"  # 음식점 ID
 
 # CSV 파일에서 contents_id 읽기
 content_ids_df = pd.read_csv('food_site_id.csv')
@@ -23,8 +22,8 @@ data = []
 
 # 각 콘텐츠 ID에 대해 데이터 수집
 for idx, content_id in enumerate(content_ids, start=1):
-    # 페이지 수에 따라 URL을 동적으로 설정
-    for page_num in range(1, total_pages + 1):
+    # 페이지 번호를 순회하여 데이터를 수집
+    for page_num in range(1, 128):  # 페이지 1부터 127까지
         url = f"{base_url}{content_id}&menuId={menu_id}#p{page_num}"
         
         print(f"수집 중: {idx}/{len(content_ids)} - 콘텐츠 ID: {content_id} - 페이지: {page_num}")  # 진행 상황 출력
@@ -37,9 +36,13 @@ for idx, content_id in enumerate(content_ids, start=1):
         page_source = driver.page_source
         soup = BeautifulSoup(page_source, 'html.parser')
 
-        # h3 요소 가져오기
+        # h3 요소 가져오기 (콘텐츠가 없는 페이지인 경우 탈출 조건)
         h3_element = soup.find('h3')
-        h3_text = h3_element.text.strip() if h3_element else 'N/A'
+        if not h3_element:  # h3 요소가 없다면 더 이상 페이지가 없는 것으로 판단
+            print(f"페이지 끝에 도달: 콘텐츠 ID {content_id} - 페이지 {page_num}")
+            break
+        
+        h3_text = h3_element.text.strip()
 
         # class="tag_area"에서 best_tag와 다른 p 태그 가져오기
         tag_area_element = soup.find(class_='tag_area')
@@ -58,6 +61,7 @@ for idx, content_id in enumerate(content_ids, start=1):
             "Additional P Texts": ', '.join(p_texts),
             **info_dict  # 기본 정보 추가
         })
+
 
 # DataFrame으로 변환
 df = pd.DataFrame(data)

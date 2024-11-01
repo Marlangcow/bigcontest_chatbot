@@ -16,6 +16,8 @@ beautifulsoup4 = "^4.12.3"
 pandas = "^2.2.3"
 chromedriver-autoinstaller = "^0.6.4"
 webdriver-manager = "^4.0.2"
+tqdm = "^4.66.6"
+aiohttp = "^3.10.10"
 
 
 [build-system]

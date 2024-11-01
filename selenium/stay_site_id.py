@@ -3,6 +3,7 @@ import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
+import pandas as pd
 
 # 드라이버 설정
 options = webdriver.ChromeOptions()
@@ -11,8 +12,8 @@ options.add_argument('window-size=1920x1080')  # 창 크기 설정
 driver = webdriver.Chrome(options=options)
 
 # 수집할 기본 URL 및 페이지 수 설정
-menu_id = "DOM_000001707000000000"  # 메뉴 ID
-total_pages = 85  # 페이지 수 (1부터 127까지)
+menu_id = "DOM_000001707000000000"  # 숙박 ID
+total_pages = 85  # 페이지 수 (1부터 86까지)
 
 # 콘텐츠 ID를 저장할 리스트
 content_ids = []

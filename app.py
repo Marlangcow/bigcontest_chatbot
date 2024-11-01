@@ -17,7 +17,7 @@ import faiss
 # Streamlit 페이지 설정
 st.set_page_config(page_title="🍊감귤톡")
 
-# Streamlit App UI
+# Streamlit App UId
 st.title("🍊감귤톡, 제주도 여행 메이트")
 st.info("제주도 여행 메이트 감귤톡이 제주도의 방방곡곡을 알려줄게🌴")
 
@@ -92,7 +92,7 @@ memory = ConversationBufferMemory(memory_key="chat_history", return_messages=Tru
 prompt_template = PromptTemplate(
     input_variables=["input_text", "search_results", "chat_history"],
     template="""
-   ### 역할
+    ### 역할
     당신은 제주도 맛집과 관광지 추천 전문가입니다. 질문을 받을 때 논리적으로 생각한 후 단계별로 답변을 제공합니다.
     복잡한 질문일수록 천천히 생각하고 검색된 데이터를 바탕으로 답변을 제공합니다.
 
