@@ -25,10 +25,10 @@ menu_ids = [
 ]
 
 category_nums = [
+    "cate0000000003",   # 쇼핑
     "cate0000000002",  # 관광지
-    "cate0000000005",  # 식당
     "cate0000000004",  # 숙박
-    "cate0000000003"   # 쇼핑
+    "cate0000000005"  # 식당
 ]
 
 base_url = "https://visitjeju.net/kr/detail/view?contentsid="
