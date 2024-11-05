@@ -1,0 +1,5 @@
+outs:
+- md5: 5a65b425ea0afb71f12c02ca493c4b7b
+  size: 3403272
+  hash: md5
+  path: merge_mop_sentiment.json
