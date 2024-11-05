@@ -1,0 +1,6 @@
+[core]
+    remote = dvc-remote-storage
+['remote "dvc-remote-storage"']
+    url = gdrive://1LQzuUABRz3a53yppOBJZTNBgbJFi8rY9
+    gdrive_client_id = 533243492434-8me2tng005iqhhco0bv6s22u6geuhkmp.apps.googleusercontent.com
+    gdrive_client_secret = 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
