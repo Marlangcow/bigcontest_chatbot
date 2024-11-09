@@ -18,6 +18,9 @@ chromedriver-autoinstaller = "^0.6.4"
 webdriver-manager = "^4.0.2"
 tqdm = "^4.66.6"
 aiohttp = "^3.10.10"
+dvc = {extras = ["all"], version = "^3.56.0"}
+google-cloud-dialogflow = "^2.34.0"
+torch = "^2.0.1"
 
 
 [build-system]
