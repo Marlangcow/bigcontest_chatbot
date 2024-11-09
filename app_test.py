@@ -469,7 +469,6 @@ def flexible_function_call_search(query):
         return "관련된 정보가 없습니다."
 
 
-
 module_path = os.path.dirname(os.path.abspath(__file__))
 locations = {
     "구좌": "구좌",
@@ -617,9 +616,6 @@ def generate_response_with_faiss(
 
     return response
 
-
-# Google Cloud Platform 프로젝트 ID 설정
-os.environ["GOOGLE_CLOUD_PROJECT"] = "jeju-chatbot"
 
 # Google Generative AI API 설정
 llm = ChatGoogleGenerativeAI(
