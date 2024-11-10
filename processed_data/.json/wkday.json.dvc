@@ -1,0 +1,5 @@
+outs:
+- md5: 7bb1be5ec52e9c9eaba9ce7d825e95f7
+  size: 24188307
+  hash: md5
+  path: wkday.json

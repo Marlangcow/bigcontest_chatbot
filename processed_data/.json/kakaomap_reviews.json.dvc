@@ -1,0 +1,5 @@
+outs:
+- md5: 8f02da7349a1d10e8022399ed31c76d4
+  size: 8979097
+  hash: md5
+  path: kakaomap_reviews.json
