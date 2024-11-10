@@ -31,7 +31,6 @@ from langchain_community.retrievers import BM25Retriever
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
-
 import faiss
 import json
 import torch
@@ -58,10 +57,7 @@ image_html = f"""
 """
 st.markdown(image_html, unsafe_allow_html=True)
 
-
 # 텍스트 표시
-st.write("")
-
 st.write("")
 
 # Replicate Credentials
@@ -174,17 +170,11 @@ def clear_chat_history():
 
 st.sidebar.button("대화 초기화", on_click=clear_chat_history)
 
-
 # RAG
 
 # 디바이스 설정
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Device is {device}.")
-
-
-# -------------------------
-# Step 1: Data Loading
-# -------------------------
 
 
 # JSON 파일 로드
@@ -228,6 +218,7 @@ file_paths = {
     "kakaomap_reviews": "/Users/naeun/bigcontest_chatbot/data/kakaomap_reviews.json",
 }
 
+@st.cache_data
 # JSON 파일 로드
 data = load_json_files(file_paths)
 
@@ -242,6 +233,7 @@ index_paths = {
     "kakaomap_reviews": "/Users/naeun/bigcontest_chatbot/data/faiss_index/kakaomap_reviews.faiss",
 }
 
+@st.cache_data
 # FAISS 인덱스 로드
 faiss_indexes = load_faiss_indexes(index_paths)
 
@@ -284,7 +276,6 @@ embedding_model = AutoModel.from_pretrained(model_name).to(device)
 # HuggingFaceEmbeddings 객체 초기화
 embedding = HuggingFaceEmbeddings(model_name=model_name)
 
-
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
     bnb_4bit_use_double_quant=True,
@@ -292,6 +283,7 @@ bnb_config = BitsAndBytesConfig(
     bnb_4bit_compute_dtype=torch.bfloat16,
 )
 
+@st.cache_data
 # 각 문서 리스트를 FAISS DB에 넣기
 mct_db = FAISS.from_documents(documents=mct_docs, embedding=embedding)
 month_db = FAISS.from_documents(documents=month_docs, embedding=embedding)
@@ -303,6 +295,7 @@ kakaomap_reviews_db = FAISS.from_documents(
     documents=kakaomap_reviews_docs, embedding=embedding
 )
 
+@st.cache_data
 # 데이터베이스를 검색기로 사용하기 위해 retriever 변수에 할당
 mct_retriever = mct_db.as_retriever()
 month_retriever = month_db.as_retriever()
@@ -341,6 +334,7 @@ dbs = {
 # 각 DB에 대해 리트리버 초기화
 retrievers = {name: initialize_retriever(db) for name, db in dbs.items()}
 
+@st.cache_data
 # BM25 검색기 생성
 mct_bm25_retriever = BM25Retriever.from_texts([doc.page_content for doc in mct_docs])
 month_bm25_retriever = BM25Retriever.from_texts(
@@ -383,88 +377,84 @@ ensemble_retrievers = {
     for name in ensemble_retrievers.keys()
 }
 
-
+@st.cache_data
 def flexible_function_call_search(query):
-    # 입력 쿼리의 임베딩을 가져옵니다.
-    input_embedding = embedding.embed_query(query)
+    try:
+        # 입력 쿼리의 임베딩을 가져옵니다.
+        input_embedding = embedding.embed_query(query)
 
-    # 리트리버와 해당 설명 정의
-    retrievers_info = {
-        "mct": {
-            "retriever": mct_retriever,
-            "description": "식당 정보 및 연이용 비중 및 금액 비중",
-        },
-        "month": {
-            "retriever": month_retriever,
-            "description": "관광지 월별 조회수",
-        },
-        "wkday": {
-            "retriever": wkday_retriever,
-            "description": "주별 일별 조회수 및 연령별 성별별 선호도",
-        },
-        "mop": {
-            "retriever": mop_retriever,
-            "description": "관광지 전체 감성분석 데이터",
-        },
-        "menus": {
-            "retriever": menus_retriever,
-            "description": "식당명 및 메뉴 및 금액",
-        },
-        "visit": {
-            "retriever": visit_retriever,
-            "description": "관광지 핵심 키워드 및 정보",
-        },
-        "kakaomap_reviews": {
-            "retriever": kakaomap_reviews_retriever,
-            "description": "리뷰 데이터",
-        },
-    }
+        # 리트리버와 설명을 정의
+        retrievers_info = {
+            "mct": {
+                "retriever": mct_retriever,
+                "description": "식당 정보 및 연이용 비중 및 금액 비중",
+            },
+            "month": {
+                "retriever": month_retriever,
+                "description": "관광지 월별 조회수",
+            },
+            "wkday": {
+                "retriever": wkday_retriever,
+                "description": "주별 일별 조회수 및 연령별 성별별 선호도",
+            },
+            "mop": {
+                "retriever": mop_retriever,
+                "description": "관광지 전체 감성분석 데이터",
+            },
+            "menus": {
+                "retriever": menus_retriever,
+                "description": "식당명 및 메뉴 및 금액",
+            },
+            "visit": {
+                "retriever": visit_retriever,
+                "description": "관광지 핵심 키워드 및 정보",
+            },
+            "kakaomap_reviews": {
+                "retriever": kakaomap_reviews_retriever,
+                "description": "리뷰 데이터",
+            },
+        }
 
-    # 각 리트리버의 설명을 기반으로 임베딩을 생성합니다.
-    retriever_embeddings = {
-        key: embedding.embed_query(info["description"])
-        for key, info in retrievers_info.items()
-    }
+        # 각 리트리버의 설명을 임베딩합니다.
+        retriever_embeddings = {
+            key: embedding.embed_query(info["description"])
+            for key, info in retrievers_info.items()
+        }
 
-    # 입력 쿼리와 각 리트리버 설명 간의 코사인 유사도 계산
-    similarities = {
-        key: util.cos_sim(input_embedding, embed).item()
-        for key, embed in retriever_embeddings.items()
-    }
+        # 코사인 유사도 계산
+        similarities = {
+            key: util.cos_sim(input_embedding, embed).item()
+            for key, embed in retriever_embeddings.items()
+        }
 
-    # 유사도가 일정 임계값을 넘는 리트리버를 선택
-    similarity_threshold = 0.7
-    selected_retrievers = [
-        key
-        for key, sim in similarities.items()
-        if sim > similarity_threshold  # 유사도 임계값 설정
-    ]
+        # 유사도가 임계값 이상인 리트리버 선택
+        similarity_threshold = 0.7
+        selected_retrievers = sorted(
+            [
+                (key, sim)
+                for key, sim in similarities.items()
+                if sim > similarity_threshold
+            ],
+            key=lambda x: x[1],
+            reverse=True,
+        )
 
-    # 유사도 높은 리트리버만 사용
-    if selected_retrievers:
+        # 선택된 리트리버를 사용해 문서 검색 수행
         results = []
-        for retriever_key in selected_retrievers:
-            retriever = retrievers_info[retriever_key]["retriever"]
-            result = retriever.get_relevant_documents(query)
-            results.extend(result)
-        return results
-    else:
-        return "관련된 정보가 없습니다."
+        for retriever_key, _ in selected_retrievers:
+            try:
+                retriever = retrievers_info[retriever_key]["retriever"]
+                result = retriever.get_relevant_documents(query)
+                results.extend(result)
+            except Exception as e:
+                print(f"{retriever_key} 리트리버에서 오류 발생: {e}")
+                continue
 
+        return results if results else "관련된 정보가 없습니다."
 
-module_path = os.path.dirname(os.path.abspath(__file__))
-locations = {
-    "구좌": "구좌",
-    "대정": "대정",
-    "안덕": "안덕",
-    "우도": "우도",
-    "애월": "애월",
-    "조천": "조천",
-    "제주시내": "제주시내",
-    "추자": "추자",
-    "한림": "한림",
-    "한경": "한경",
-}
+    except Exception as e:
+        print(f"오류 발생: {e}")
+        return "오류가 발생했습니다."
 
 
 def generate_response_with_faiss(
@@ -475,29 +465,40 @@ def generate_response_with_faiss(
     embed_text,
     keywords,
     local,
-    locations,
-    score,
-    index_path=os.path.join(module_path, "faiss_index.faiss"),
+    locations={
+        "구좌": "구좌",
+        "대정": "대정",
+        "안덕": "안덕",
+        "우도": "우도",
+        "애월": "애월",
+        "조천": "조천",
+        "제주시내": "제주시내",
+        "추자": "추자",
+        "한림": "한림",
+        "한경": "한경",
+    },
+    score=0,
+    index_path=os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "faiss_index.faiss"
+    ),
     max_count=10,
     k=3,
     print_prompt=True,
 ):
-
-    # FAISS 인덱스를 파일에서 로드
-    index = load_faiss_indexes(index_path)
+    # FAISS 인덱스 로드
+    try:
+        index = load_faiss_indexes(index_path)
+    except Exception as e:
+        return f"인덱스 로드에 실패했습니다: {e}"
 
     # 검색 쿼리 임베딩 생성
     query_embedding = embed_text(question).reshape(1, -1)
 
-    # 가장 유사한 텍스트 검색 (3배수)
+    # 유사한 텍스트 검색
     distances, indices = index.search(query_embedding, k * 3)
-
-    # FAISS로 검색된 상위 k개의 데이터프레임 추출
     filtered_df = df.iloc[indices[0, :]].copy().reset_index(drop=True)
 
-    # 웹페이지의 사이드바에서 선택하는 키워드, 지역, 리뷰 평점 조건 구현
-
-    # 키워드 필터링 매핑 사용
+    # 키워드 매핑
     keyword_map = {
         "착한가격업소": "착한가격업소",
         "럭셔리트래블인제주": "럭셔리트래블인제주",
@@ -521,34 +522,25 @@ def generate_response_with_faiss(
         filtered_df = filtered_df[
             filtered_df["핵심키워드"].apply(lambda x: keyword_map[keywords] in x)
         ].reset_index(drop=True)
-
-    # 선택된 결과가 없으면 처리
     if filtered_df.empty:
         return "질문과 일치하는 가게가 없습니다."
 
     # 지역 필터링
     local = locations.get(local, "기타")
     filtered_df = filtered_df[filtered_df["지역"] == local].reset_index(drop=True)
-
-    # 선택된 결과가 없으면 처리
     if filtered_df.empty:
         return "질문과 일치하는 가게가 없습니다."
 
     # 평점 필터링
     filtered_df = filtered_df[filtered_df["평점"] >= score].reset_index(drop=True)
-
-    # 선택된 결과가 없으면 처리
     if filtered_df.empty:
         return "질문과 일치하는 가게가 없습니다."
 
-    # 참고할 정보와 프롬프트 구성
+    # 프롬프트 생성
     reference_info = "\n".join(filtered_df["text"][:max_count])
-
-    # 응답을 받아오기 위한 프롬프트 생성
     prompt = (
         f"질문: {question} 특히 {local}을 선호해\n참고할 정보:\n{reference_info}\n응답:"
     )
-
     if print_prompt:
         print("-----------------------------" * 3)
         print(prompt)
@@ -556,10 +548,9 @@ def generate_response_with_faiss(
 
     # 응답 생성
     response = model.generate_content(prompt)
-
     return response
 
-
+@st.cache_data
 # Google Generative AI API 설정
 llm = ChatGoogleGenerativeAI(
     model="gemini-1.5-flash",
@@ -570,6 +561,7 @@ llm = ChatGoogleGenerativeAI(
 
 memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
+@st.cache_data
 prompt_template = PromptTemplate(
     input_variables=["input_text", "search_results", "chat_history"],
     template="""
@@ -615,10 +607,10 @@ chain = LLMChain(
 
 
 # 통합된 응답 생성 함수
-def get_chatbot_response(user_input, memory, chain):
+def get_chatbot_response(query, memory, chain):
     try:
         # 검색 결과 추출
-        search_results = flexible_function_call_search(user_input)
+        search_results = flexible_function_call_search(query)
         if not search_results:
             return "관련된 정보를 찾을 수 없습니다."
 
@@ -627,7 +619,6 @@ def get_chatbot_response(user_input, memory, chain):
             [doc.page_content for doc in search_results]
         ).strip()
 
-        # 검색된 내용이 없을 경우 처리
         if not search_results_str:
             return "검색된 내용이 없어서 답변을 드릴 수 없습니다."
 
@@ -636,12 +627,11 @@ def get_chatbot_response(user_input, memory, chain):
 
         # LLMChain에 전달할 입력 데이터 구성
         input_data = {
-            "input_text": user_input,
+            "input_text": query,
             "search_results": search_results_str,
             "chat_history": chat_history,
         }
 
-        # LLMChain을 통해 응답 생성
         try:
             output = chain(input_data)
             output_text = output.get("text", str(output))
@@ -649,8 +639,8 @@ def get_chatbot_response(user_input, memory, chain):
             print(f"LLM 응답 생성 중 오류 발생: {e}")
             return "응답을 생성하는 과정에서 오류가 발생했습니다. 다시 시도해주세요."
 
-        # 응답을 메모리에 저장
-        memory.save_context({"input": user_input}, {"output": output_text})
+        # 대화 기록에 입력 및 출력 저장
+        memory.save_context({"input": query}, {"output": output_text})
         return output_text
 
     except Exception as e:
@@ -664,54 +654,31 @@ def get_chatbot_response(user_input, memory, chain):
 #     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
 #     while True:
-#         user_input = input("질문을 입력하세요: ")
-#         if user_input.lower() == "exit":
+#         query = input("질문을 입력하세요: ")
+#         if query.lower() == "exit":
 #             print("챗봇을 종료합니다.")
 #             break
 
 #         # 통합된 응답 생성 함수 사용
-#         response = get_chatbot_response(user_input, memory, chain)
+#         response = get_chatbot_response(query, memory, chain)
 #         print("\n챗봇 응답:", response)
 
-
-# Streamlit 인터페이스용
-def handle_streamlit_input():
-    prompt = st.chat_input("질문을 입력하세요...")  # 프롬프트 입력 받기
-    if prompt:  # 입력값이 있을 경우 처리
-        # 사용자 메시지 출력
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.write(prompt)
-
-        # 통합된 응답 생성 함수 사용
-        response = get_chatbot_response(
-            prompt,
-            ConversationBufferMemory(memory_key="chat_history", return_messages=True),
-            chain,
-        )
-
-        # 응답 출력
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                st.markdown(response)
-
-        # 응답 메시지 저장
-        st.session_state.messages.append({"role": "assistant", "content": response})
-
-
-# Streamlit 챗봇 인터페이스
+# 세션 상태 체크 및 초기화
 if "messages" not in st.session_state:
-    st.session_state.messages = []  # messages 초기화
+    st.session_state.messages = []  # 메시지 초기화
 
-# 이미지 표시 (세션 상태 유지)
-if "image_html" in st.session_state:
-    st.markdown(st.session_state.image_html, unsafe_allow_html=True)
+# 사용자로부터 입력 받기, label 추가
+prompt = st.chat_input(
+    "Say something", label="Chat Input", label_visibility="collapsed"
+)
+if prompt:
+    # 입력받은 쿼리로 응답 생성
+    response = get_chatbot_response(prompt, memory, chain)
 
-# 메시지 표시
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+    # 입력 및 응답 결과를 UI에 출력
+    st.write(f"User: {prompt}")
+    st.write(f"Chatbot: {response}")
 
-# 실제로 실행할 부분
+# 챗봇 시작 시 이전 대화 기록 불러오기
 if __name__ == "__main__":
-    handle_streamlit_input()
+    st.session_state
