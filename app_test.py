@@ -225,6 +225,7 @@ data = load_json_files(file_paths)
 # FAISS 인덱스 경로 설정
 index_paths = {
     "mct": "/Users/naeun/bigcontest_chatbot/data/faiss_index/mct_index_pq.faiss",
+    
     "month": "/Users/naeun/bigcontest_chatbot/data/faiss_index/month_index_pq.faiss",
     "wkday": "/Users/naeun/bigcontest_chatbot/data/faiss_index/wkday_index_pq.faiss",
     # "mop": "/Users/naeun/bigcontest_chatbot/data/faiss_index/mop_db.faiss",  # 주석 처리된 경로
