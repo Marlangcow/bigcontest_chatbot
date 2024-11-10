@@ -1,6 +1,6 @@
 .streamlit/secrets.toml
 
-.dvc/config
+.dvc
 
 *.csv
 *.index
