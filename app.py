@@ -22,7 +22,7 @@ st.title("🍊감귤톡, 제주도 여행 메이트")
 st.info("제주도 여행 메이트 감귤톡이 제주도의 방방곡곡을 알려줄게🌴")
 
 # 이미지 로드 설정
-if 'image_loaded' not in st.session_state:
+if "image_loaded" not in st.session_state:
     st.session_state.image_loaded = True
     st.session_state.image_html = """
     <div style="display: flex; justify-content: center;">
@@ -42,47 +42,51 @@ st.write("")  # 여백 추가
 load_dotenv()
 google_api_key = os.getenv("GOOGLE_API_KEY")
 
+
 # CSV 파일 로드
 @st.cache_data
 
 # CSV 파일 로드
 def load_data():
     csv_file_paths = [
-        './data/review_documents.csv',
-        './data/mct_documents.csv',
-        './data/trrsrt_documents.csv'
+        "./data/review_documents.csv",
+        "./data/mct_documents.csv",
+        "./data/trrsrt_documents.csv",
     ]
     dfs = []
-    
+
     with st.spinner("잠시만 기다려 주세요. 곧 나와요!"):  # 사용자 정의 스피너 메시지
         dfs = [pd.read_csv(csv_file_path) for csv_file_path in csv_file_paths]
-    
+
     return dfs
+
 
 dfs = load_data()
 
 
-
 # FAISS 인덱스 파일 경로
-faiss_index_path = './modules/faiss_index.index'
+faiss_index_path = "./modules/faiss_index.index"
 
 # FAISS 인덱스 로드
 faiss_index = faiss.read_index(faiss_index_path)
 
+
 # 임베딩 모델 로드
 @st.cache_data
 def load_model():
-    return SentenceTransformer('jhgan/ko-sroberta-multitask')
+    return SentenceTransformer("jhgan/ko-sroberta-multitask")
+
 
 model_embedding = load_model()
 
 
 # Google Generative AI API 설정
-chat_model = ChatGoogleGenerativeAI(model='gemini-1.5-flash',
-                                    api_key=google_api_key,
-                                    temperature=0.3,  
-                                    top_p=0.85,       
-                                    frequency_penalty=0.3
+chat_model = ChatGoogleGenerativeAI(
+    model="gemini-1.5-flash",
+    api_key=google_api_key,
+    temperature=0.3,
+    top_p=0.85,
+    frequency_penalty=0.3,
 )
 
 # 멀티턴 대화를 위한 Memory 설정
@@ -133,8 +137,9 @@ prompt_template = PromptTemplate(
     사용자의 질문: {input_text}
 
     논리적인 사고 후 사용자에게 제공할 답변:
-    """
+    """,
 )
+
 
 # 검색 및 응답 생성 함수
 def search_faiss(query_embedding, k=5):
@@ -142,7 +147,9 @@ def search_faiss(query_embedding, k=5):
     FAISS에서 유사한 벡터를 검색하여 원본 데이터 반환
     """
     # FAISS 인덱스에서 유사한 벡터 검색
-    distances, indices = faiss_index.search(np.array(query_embedding, dtype=np.float32), k)
+    distances, indices = faiss_index.search(
+        np.array(query_embedding, dtype=np.float32), k
+    )
 
     # 검색된 인덱스를 바탕으로 원본 데이터 가져오기
     search_results = []
@@ -151,7 +158,9 @@ def search_faiss(query_embedding, k=5):
     for idx in indices[0]:
         found = False  # 찾은 데이터프레임 체크
         for df in dfs:
-            if total_length + len(df) > idx:  # 현재 데이터프레임에서 유효한 인덱스인지 체크
+            if (
+                total_length + len(df) > idx
+            ):  # 현재 데이터프레임에서 유효한 인덱스인지 체크
                 if idx - total_length >= 0 and idx - total_length < len(df):
                     search_results.append(df.iloc[idx - total_length])  # 인덱스 재조정
                 found = True
@@ -181,7 +190,7 @@ def generate_response(user_input):
     filled_prompt = prompt_template.format(
         input_text=user_input,
         search_results=search_results_str,
-        chat_history=memory.load_memory_variables({})["chat_history"]
+        chat_history=memory.load_memory_variables({})["chat_history"],
     )
 
     # 1회 호출에서 5000 토큰 제한이므로 적절하게 텍스트를 나누어 처리
@@ -208,7 +217,7 @@ def generate_response(user_input):
 
 
 # 스트림릿 챗봇 인터페이스
-if 'messages' not in st.session_state:
+if "messages" not in st.session_state:
     st.session_state.messages = []  # messages 초기화
 
 # 이미지 표시 (세션 상태 유지)
@@ -230,13 +239,13 @@ if prompt := st.chat_input():
             with st.spinner("Thinking..."):
                 response = generate_response(prompt)
                 placeholder = st.empty()
-                full_response = ''  # 응답 초기화
+                full_response = ""  # 응답 초기화
 
                 # 응답을 문자열로 변환
                 if isinstance(response, str):
                     full_response = response
                 else:
-                    full_response = response.text  
+                    full_response = response.text
 
                 # 전체 응답 표시
                 placeholder.markdown(full_response)

@@ -36,6 +36,9 @@ import faiss
 import json
 import torch
 
+# .env 파일 경로 지정
+load_dotenv()
+google_api_key = os.getenv("GOOGLE_API_KEY_1")
 
 # Streamlit App UI
 st.set_page_config(page_title="🍊감귤톡")
@@ -47,13 +50,14 @@ st.write("")
 st.info("제주도 여행 메이트 감귤톡이 제주도의 방방곡곡을 알려줄게 🏝️")
 
 # 이미지 로드 설정
-if "image_loaded" not in st.session_state:
-    st.session_state.image_loaded = True
-    st.session_state.image_html = """
-    <div style="display: flex; justify-content: center;">
-        <img src="https://img4.daumcdn.net/thumb/R658x0.q70/?fname=https://t1.daumcdn.net/news/202105/25/linkagelab/20210525013157546odxh.jpg" alt="centered image" width="50%">
-    </div>
-    """
+image_path = "https://img4.daumcdn.net/thumb/R658x0.q70/?fname=https://t1.daumcdn.net/news/202105/25/linkagelab/20210525013157546odxh.jpg"
+image_html = f"""
+<div style="display: flex; justify-content: center;">
+    <img src="{image_path}" alt="centered image" width="50%">
+</div>
+"""
+st.markdown(image_html, unsafe_allow_html=True)
+
 
 # 텍스트 표시
 st.write("")
@@ -146,15 +150,7 @@ with st.sidebar:
     score = st.slider("리뷰 평점", min_value=3.0, max_value=5.0, value=4.5, step=0.05)
 
 # 이메일 링크
-st.sidebar.caption(
-    "📨 감귤톡 제작자에게 연락하고 싶다면? [Send email](mailto:happily2bus@gmail.com)"
-)
-
-
-st.write("")
-
-
-st.write("")
+st.sidebar.caption("📨 감귤톡에 문의하기 [Send email](mailto:happily2bus@gmail.com)")
 
 st.write("")
 
@@ -166,7 +162,7 @@ if "messages" not in st.session_state.keys():
 
 # Display or clear chat messages
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
+    with st.chat_message(message["role"], avatar="🐬"):
         st.write(message["content"])
 
 
@@ -185,10 +181,6 @@ st.sidebar.button("대화 초기화", on_click=clear_chat_history)
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Device is {device}.")
 
-
-# .env 파일 경로 지정
-load_dotenv()
-google_api_key = os.getenv("GOOGLE_API_KEY_1")
 
 # -------------------------
 # Step 1: Data Loading
@@ -209,24 +201,6 @@ def load_json_files(file_paths):
     return data
 
 
-file_paths = {
-    "mct": "/Users/naeun/bigcontest_chatbot/data/mct.json",
-    "month": "/Users/naeun/bigcontest_chatbot/data/month.json",
-    "wkday": "/Users/naeun/bigcontest_chatbot/data/wkday.json",
-    "mop_sentiment": "/Users/naeun/bigcontest_chatbot/data/merge_mop_sentiment.json",
-    "menu": "/Users/naeun/bigcontest_chatbot/data/mct_menus.json",
-    "visit_jeju": "/Users/naeun/bigcontest_chatbot/data/visit_jeju.json",
-    "kakaomap_reviews": "/Users/naeun/bigcontest_chatbot/data/kakaomap_reviews.json",
-}
-
-data = load_json_files(file_paths)
-
-
-# -------------------------
-# Step 2: Embedding and FAISS Setup
-# -------------------------
-
-
 # FAISS 인덱스 로드 시 오류 처리 함수 개선
 def load_faiss_indexes(index_paths):
     indexes = {}
@@ -243,13 +217,27 @@ def load_faiss_indexes(index_paths):
     return indexes
 
 
+# JSON 파일 경로 설정
+file_paths = {
+    "mct": "/Users/naeun/bigcontest_chatbot/data/mct.json",
+    "month": "/Users/naeun/bigcontest_chatbot/data/month.json",
+    "wkday": "/Users/naeun/bigcontest_chatbot/data/wkday.json",
+    "mop_sentiment": "/Users/naeun/bigcontest_chatbot/data/merge_mop_sentiment.json",
+    "menu": "/Users/naeun/bigcontest_chatbot/data/mct_menus.json",
+    "visit_jeju": "/Users/naeun/bigcontest_chatbot/data/visit_jeju.json",
+    "kakaomap_reviews": "/Users/naeun/bigcontest_chatbot/data/kakaomap_reviews.json",
+}
+
+# JSON 파일 로드
+data = load_json_files(file_paths)
+
 # FAISS 인덱스 경로 설정
 index_paths = {
     "mct": "/Users/naeun/bigcontest_chatbot/data/faiss_index/mct_index_pq.faiss",
     "month": "/Users/naeun/bigcontest_chatbot/data/faiss_index/month_index_pq.faiss",
     "wkday": "/Users/naeun/bigcontest_chatbot/data/faiss_index/wkday_index_pq.faiss",
     # "mop": "/Users/naeun/bigcontest_chatbot/data/faiss_index/mop_db.faiss",  # 주석 처리된 경로
-    "menus": "/Users/naeun/bigcontest_chatbot/data/faiss_index/menu.faiss",
+    "menu": "/Users/naeun/bigcontest_chatbot/data/faiss_index/menu.faiss",
     "visit": "/Users/naeun/bigcontest_chatbot/data/faiss_index/visit_jeju.faiss",
     "kakaomap_reviews": "/Users/naeun/bigcontest_chatbot/data/faiss_index/kakaomap_reviews.faiss",
 }
@@ -257,37 +245,34 @@ index_paths = {
 # FAISS 인덱스 로드
 faiss_indexes = load_faiss_indexes(index_paths)
 
-
-# 리스트 항목에서 '가게명'을 사용하여 Document 객체 생성
+# Document 객체 생성
 mct_docs = [
-    Document(page_content=item["가게명"], metadata=item) for item in data["mct"]
+    Document(page_content=item.get("가게명", ""), metadata=item) for item in data["mct"]
 ]
 month_docs = [
-    Document(page_content=item["관광지명"], metadata=item) for item in data["month"]
+    Document(page_content=item.get("관광지명", ""), metadata=item)
+    for item in data["month"]
 ]
 wkday_docs = [
-    Document(page_content=item["관광지명"], metadata=item) for item in data["wkday"]
+    Document(page_content=item.get("관광지명", ""), metadata=item)
+    for item in data["wkday"]
 ]
 mop_docs = [
-    Document(page_content=item["관광지명"], metadata=item)
+    Document(page_content=item.get("관광지명", ""), metadata=item)
     for item in data["mop_sentiment"]
 ]
 menu_docs = [
-    Document(page_content=item["가게명"], metadata=item) for item in data["menu"]
+    Document(page_content=item.get("가게명", ""), metadata=item)
+    for item in data["menu"]
 ]
 visit_docs = [
-    Document(page_content=item["관광지명"], metadata=item)
+    Document(page_content=item.get("관광지명", ""), metadata=item)
     for item in data["visit_jeju"]
 ]
 kakaomap_reviews_docs = [
-    Document(page_content=item["관광지명"], metadata=item)
+    Document(page_content=item.get("관광지명", ""), metadata=item)
     for item in data["kakaomap_reviews"]
 ]
-
-
-# -------------------------
-# Step 3: Initialize jhgan/ko-sroberta-multitask Model
-# -------------------------
 
 # 모델과 토크나이저 로드
 model_name = "jhgan/ko-sroberta-multitask"
@@ -323,13 +308,13 @@ mct_retriever = mct_db.as_retriever()
 month_retriever = month_db.as_retriever()
 wkday_retriever = wkday_db.as_retriever()
 mop_retriever = mop_db.as_retriever()
-mct_menus_retriever = menus_db.as_retriever()
+menus_retriever = menus_db.as_retriever()
 visit_retriever = visit_db.as_retriever()
 kakaomap_reviews_retriever = kakaomap_reviews_db.as_retriever()
 
 
 def initialize_retriever(
-    db, search_type="mmr", k=4, fetch_k=10, lambda_mult=0.6, score_threshold=0.8
+    db, search_type="mmr", k=4, fetch_k=10, lambda_mult=0.6, score_threshold=0.6
 ):
     return db.as_retriever(
         search_type=search_type,
@@ -365,9 +350,7 @@ wkday_bm25_retriever = BM25Retriever.from_texts(
     [doc.page_content for doc in wkday_docs]
 )
 mop_bm25_retriever = BM25Retriever.from_texts([doc.page_content for doc in mop_docs])
-mct_menus_bm25_retriever = BM25Retriever.from_texts(
-    [doc.page_content for doc in menu_docs]
-)
+menus_bm25_retriever = BM25Retriever.from_texts([doc.page_content for doc in menu_docs])
 visit_bm25_retriever = BM25Retriever.from_texts(
     [doc.page_content for doc in visit_docs]
 )
@@ -386,7 +369,7 @@ ensemble_retrievers = {
     "month": (month_retriever, month_bm25_retriever),
     "wkday": (wkday_retriever, wkday_bm25_retriever),
     "mop": (mop_retriever, mop_bm25_retriever),
-    "mct_menus": (mct_menus_retriever, mct_menus_bm25_retriever),
+    "menus": (menus_retriever, menus_bm25_retriever),
     "visit": (visit_retriever, visit_bm25_retriever),
     "kakaomap_reviews": (kakaomap_reviews_retriever, kakaomap_reviews_bm25_retriever),
 }
@@ -394,10 +377,10 @@ ensemble_retrievers = {
 # Ensemble retrievers 초기화를 명확하게
 ensemble_retrievers = {
     name: initialize_ensemble_retriever(
-        retrievers=[retrievers[name], globals()[f"{name}_bm25_retriever"]],
+        retrievers=ensemble_retrievers[name],
         weights=[0.6, 0.4],
     )
-    for name in retrievers.keys()
+    for name in ensemble_retrievers.keys()
 }
 
 
@@ -423,8 +406,8 @@ def flexible_function_call_search(query):
             "retriever": mop_retriever,
             "description": "관광지 전체 감성분석 데이터",
         },
-        "mct_menus": {
-            "retriever": mct_menus_retriever,
+        "menus": {
+            "retriever": menus_retriever,
             "description": "식당명 및 메뉴 및 금액",
         },
         "visit": {
@@ -437,9 +420,6 @@ def flexible_function_call_search(query):
         },
     }
 
-    # 입력 쿼리의 임베딩을 가져옵니다.
-    input_embedding = embedding.embed_query(query)
-
     # 각 리트리버의 설명을 기반으로 임베딩을 생성합니다.
     retriever_embeddings = {
         key: embedding.embed_query(info["description"])
@@ -448,13 +428,16 @@ def flexible_function_call_search(query):
 
     # 입력 쿼리와 각 리트리버 설명 간의 코사인 유사도 계산
     similarities = {
-        key: util.cos_sim(input_embedding, torch.tensor(embed)).item()
+        key: util.cos_sim(input_embedding, embed).item()
         for key, embed in retriever_embeddings.items()
     }
 
     # 유사도가 일정 임계값을 넘는 리트리버를 선택
+    similarity_threshold = 0.7
     selected_retrievers = [
-        key for key, sim in similarities.items() if sim > 0.7  # 유사도 임계값 설정
+        key
+        for key, sim in similarities.items()
+        if sim > similarity_threshold  # 유사도 임계값 설정
     ]
 
     # 유사도 높은 리트리버만 사용
@@ -492,15 +475,16 @@ def generate_response_with_faiss(
     embed_text,
     keywords,
     local,
+    locations,
+    score,
     index_path=os.path.join(module_path, "faiss_index.faiss"),
     max_count=10,
     k=3,
     print_prompt=True,
 ):
-    filtered_df = df
 
     # FAISS 인덱스를 파일에서 로드
-    faiss_indexes = load_faiss_indexes(index_paths)
+    index = load_faiss_indexes(index_path)
 
     # 검색 쿼리 임베딩 생성
     query_embedding = embed_text(question).reshape(1, -1)
@@ -509,87 +493,48 @@ def generate_response_with_faiss(
     distances, indices = index.search(query_embedding, k * 3)
 
     # FAISS로 검색된 상위 k개의 데이터프레임 추출
-    filtered_df = filtered_df.iloc[indices[0, :]].copy().reset_index(drop=True)
+    filtered_df = df.iloc[indices[0, :]].copy().reset_index(drop=True)
 
     # 웹페이지의 사이드바에서 선택하는 키워드, 지역, 리뷰 평점 조건 구현
 
-    # 핵심 키워드 조건을 만족하는 가게들만 필터링
-    if keywords == "착한가격업소":
+    # 키워드 필터링 매핑 사용
+    keyword_map = {
+        "착한가격업소": "착한가격업소",
+        "럭셔리트래블인제주": "럭셔리트래블인제주",
+        "우수관광사업체": "우수관광사업체",
+        "무장애관광": "무장애관광",
+        "안전여행스탬프": "안전여행스탬프",
+        "향토음식": "향토음식",
+        "한식": "한식",
+        "카페": "카페",
+        "해물뚝배기": "해물뚝배기",
+        "몸국": "몸국",
+        "해장국": "해장국",
+        "수제버거": "수제버거",
+        "흑돼지": "흑돼지",
+        "해산물": "해산물",
+        "일식": "일식",
+    }
+
+    # 키워드 필터링
+    if keywords in keyword_map:
         filtered_df = filtered_df[
-            filtered_df["핵심키워드"].apply(lambda x: "착한가격업소" in x)
-        ].reset_index(drop=True)
-    elif keywords == "럭셔리트래블인제주":
-        filtered_df = filtered_df[
-            filtered_df["핵심키워드"].apply(lambda x: "럭셔리트래블인제주" in x)
-        ].reset_index(drop=True)
-    elif keywords == "우수관광사업체":
-        filtered_df = filtered_df[
-            filtered_df["핵심키워드"].apply(lambda x: "우수관광사업체" in x)
-        ].reset_index(drop=True)
-    elif keywords == "무장애관광":
-        filtered_df = filtered_df[
-            filtered_df["핵심키워드"].apply(lambda x: "무장애관광" in x)
-        ].reset_index(drop=True)
-    elif keywords == "안전여행스탬프":
-        filtered_df = filtered_df[
-            filtered_df["핵심키워드"].apply(lambda x: "안전여행스탬프" in x)
-        ].reset_index(drop=True)
-    elif keywords == "향토음식":
-        filtered_df = filtered_df[
-            filtered_df["핵심키워드"].apply(lambda x: "향토음식" in x)
-        ].reset_index(drop=True)
-    elif keywords == "한식":
-        filtered_df = filtered_df[
-            filtered_df["핵심키워드"].apply(lambda x: "한식" in x)
-        ].reset_index(drop=True)
-    elif keywords == "카페":
-        filtered_df = filtered_df[
-            filtered_df["핵심키워드"].apply(lambda x: "카페" in x)
-        ].reset_index(drop=True)
-    elif keywords == "해물뚝배기":
-        filtered_df = filtered_df[
-            filtered_df["핵심키워드"].apply(lambda x: "해물뚝배기" in x)
-        ].reset_index(drop=True)
-    elif keywords == "몸국":
-        filtered_df = filtered_df[
-            filtered_df["핵심키워드"].apply(lambda x: "몸국" in x)
-        ].reset_index(drop=True)
-    elif keywords == "해장국":
-        filtered_df = filtered_df[
-            filtered_df["핵심키워드"].apply(lambda x: "해장국" in x)
-        ].reset_index(drop=True)
-    elif keywords == "수제버거":
-        filtered_df = filtered_df[
-            filtered_df["핵심키워드"].apply(lambda x: "수제버거" in x)
-        ].reset_index(drop=True)
-    elif keywords == "흑돼지":
-        filtered_df = filtered_df[
-            filtered_df["핵심키워드"].apply(lambda x: "흑돼지" in x)
-        ].reset_index(drop=True)
-    elif keywords == "해산물":
-        filtered_df = filtered_df[
-            filtered_df["핵심키워드"].apply(lambda x: "해산물" in x)
-        ].reset_index(drop=True)
-    elif keywords == "일식":
-        filtered_df = filtered_df[
-            filtered_df["핵심키워드"].apply(lambda x: "일식" in x)
+            filtered_df["핵심키워드"].apply(lambda x: keyword_map[keywords] in x)
         ].reset_index(drop=True)
 
     # 선택된 결과가 없으면 처리
     if filtered_df.empty:
         return "질문과 일치하는 가게가 없습니다."
 
-    # 지역 옵션
-    if local in locations:
-        local = locations[local]
-    else:
-        local = "기타"  # '기타' 지역으로 처리
+    # 지역 필터링
+    local = locations.get(local, "기타")
+    filtered_df = filtered_df[filtered_df["지역"] == local].reset_index(drop=True)
 
     # 선택된 결과가 없으면 처리
     if filtered_df.empty:
         return "질문과 일치하는 가게가 없습니다."
 
-    # 평점에 맞는 가게 필터링
+    # 평점 필터링
     filtered_df = filtered_df[filtered_df["평점"] >= score].reset_index(drop=True)
 
     # 선택된 결과가 없으면 처리
@@ -597,9 +542,7 @@ def generate_response_with_faiss(
         return "질문과 일치하는 가게가 없습니다."
 
     # 참고할 정보와 프롬프트 구성
-    reference_info = ""
-    for idx, row in filtered_df.iterrows():
-        reference_info += f"{row['text']}\n"
+    reference_info = "\n".join(filtered_df["text"][:max_count])
 
     # 응답을 받아오기 위한 프롬프트 생성
     prompt = (
@@ -671,59 +614,104 @@ chain = LLMChain(
 )
 
 
-# 챗봇 대화 루프
-def chat():
-    print("챗봇 대화를 시작합니다. 'exit'을 입력하면 종료됩니다.")
-    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-
-    while True:
-        user_input = input("질문을 입력하세요: ")
-        if user_input.lower() == "exit":
-            break
-
+# 통합된 응답 생성 함수
+def get_chatbot_response(user_input, memory, chain):
+    try:
+        # 검색 결과 추출
         search_results = flexible_function_call_search(user_input)
+        if not search_results:
+            return "관련된 정보를 찾을 수 없습니다."
 
-        # 검색 결과를 문자열로 변환하여 LLM에 전달
-        search_results_str = "\n".join([doc.page_content for doc in search_results])
+        # 검색 결과를 문자열로 변환
+        search_results_str = "\n".join(
+            [doc.page_content for doc in search_results]
+        ).strip()
+
+        # 검색된 내용이 없을 경우 처리
+        if not search_results_str:
+            return "검색된 내용이 없어서 답변을 드릴 수 없습니다."
 
         # 대화 기록 불러오기
-        chat_history = memory.load_memory_variables({})["chat_history"]
+        chat_history = memory.load_memory_variables({}).get("chat_history", "")
 
+        # LLMChain에 전달할 입력 데이터 구성
         input_data = {
             "input_text": user_input,
             "search_results": search_results_str,
             "chat_history": chat_history,
         }
 
-        output = chain(input_data)
-        output_text = output.get("text", str(output))
+        # LLMChain을 통해 응답 생성
+        try:
+            output = chain(input_data)
+            output_text = output.get("text", str(output))
+        except Exception as e:
+            print(f"LLM 응답 생성 중 오류 발생: {e}")
+            return "응답을 생성하는 과정에서 오류가 발생했습니다. 다시 시도해주세요."
 
-        print("\n챗봇 응답:", output_text)
+        # 응답을 메모리에 저장
         memory.save_context({"input": user_input}, {"output": output_text})
+        return output_text
+
+    except Exception as e:
+        print(f"검색 또는 응답 생성 중 오류 발생: {e}")
+        return "오류가 발생했습니다. 다시 시도해주세요."
 
 
-# User-provided prompt
-if prompt := st.chat_input():
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.write(prompt)
+# # 챗봇 대화 루프 함수 (콘솔용)
+# def chat():
+#     print("챗봇 대화를 시작합니다. 'exit'을 입력하면 종료됩니다.")
+#     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
-# Generate a new response if last message is not from assistant
-if st.session_state.messages[-1]["role"] != "assistant":
-    with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
-            response = generate_response_with_faiss(
-                prompt, df, embeddings, model, embed_text, keywords, local
-            )
-            placeholder = st.empty()
-            full_response = ""
+#     while True:
+#         user_input = input("질문을 입력하세요: ")
+#         if user_input.lower() == "exit":
+#             print("챗봇을 종료합니다.")
+#             break
 
-            # 만약 response가 GenerateContentResponse 객체라면, 문자열로 변환하여 사용합니다.
-            if isinstance(response, str):
-                full_response = response
-            else:
-                full_response = response.text
+#         # 통합된 응답 생성 함수 사용
+#         response = get_chatbot_response(user_input, memory, chain)
+#         print("\n챗봇 응답:", response)
 
-            placeholder.markdown(full_response)
-    message = {"role": "assistant", "content": full_response}
-    st.session_state.messages.append(message)
+
+# Streamlit 인터페이스용
+def handle_streamlit_input():
+    prompt = st.chat_input("질문을 입력하세요...")  # 프롬프트 입력 받기
+    if prompt:  # 입력값이 있을 경우 처리
+        # 사용자 메시지 출력
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.write(prompt)
+
+        # 통합된 응답 생성 함수 사용
+        response = get_chatbot_response(
+            prompt,
+            ConversationBufferMemory(memory_key="chat_history", return_messages=True),
+            chain,
+        )
+
+        # 응답 출력
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                st.markdown(response)
+
+        # 응답 메시지 저장
+        st.session_state.messages.append({"role": "assistant", "content": response})
+
+
+# Streamlit 챗봇 인터페이스
+if "messages" not in st.session_state:
+    st.session_state.messages = []  # messages 초기화
+
+# 이미지 표시 (세션 상태 유지)
+if "image_html" in st.session_state:
+    st.markdown(st.session_state.image_html, unsafe_allow_html=True)
+
+# 메시지 표시
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# 실제로 실행할 부분
+if __name__ == "__main__":
+    handle_streamlit_input()
