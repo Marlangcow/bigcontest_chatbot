@@ -1,1 +1,4 @@
-.dvc/config
+.dvc
+.csv
+.vscode
+.git
