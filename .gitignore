@@ -1,5 +1,7 @@
 .streamlit/secrets.toml
 
+.dvc/config
+
 *.csv
 *.index
 *.npy
