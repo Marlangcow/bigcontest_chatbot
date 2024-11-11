@@ -1,0 +1,44 @@
+name: bigcontest-chatbot
+channels:
+  - conda-forge
+  - pytorch
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - streamlit>=1.38.0
+  - selenium>=4.26.0
+  - beautifulsoup4>=4.12.3
+  - pandas>=2.2.3
+  - tqdm>=4.66.6
+  - aiohttp>=3.10.10
+  - pytorch>=2.0.1
+  - numpy>=1.24.0
+  - dask>=2024.1.0
+  - faiss-cpu>=1.7.4
+  - watchdog>=3.0.0
+  - pip:
+      - python-dotenv==1.0.0
+      - langchain-community==0.3.5
+      - chromedriver-autoinstaller>=0.6.4
+      - webdriver-manager>=4.0.2
+      - dvc[all]>=3.56.0
+      - google-cloud-dialogflow>=2.34.0
+      - jq>=1.6.0
+      - jsonlines>=3.1.0
+      - langchain==0.3.7
+      - langchain-google-genai>=0.0.11
+      - langchain-core>=0.3.15
+      - langchain-text-splitters>=0.0.1
+      - sentence-transformers>=2.5.1
+      - mecab-python3>=1.0.8
+      - mecab-ko>=1.0.0
+      - konlpy>=0.6.0
+      - transformers>=4.36.0
+      - peft>=0.7.0
+      - accelerate>=0.27.0
+      - bitsandbytes>=0.41.0
+      - rank-bm25>=0.2.2
+      - google-generativeai>=0.3.0
+      - langchain-core>=0.3.15
+      - langchain-huggingface>=0.0.6
