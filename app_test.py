@@ -218,7 +218,6 @@ file_paths = {
     "kakaomap_reviews": "/Users/naeun/bigcontest_chatbot/data/kakaomap_reviews.json",
 }
 
-@st.cache_data
 # JSON 파일 로드
 data = load_json_files(file_paths)
 
@@ -234,7 +233,6 @@ index_paths = {
     "kakaomap_reviews": "/Users/naeun/bigcontest_chatbot/data/faiss_index/kakaomap_reviews.faiss",
 }
 
-@st.cache_data
 # FAISS 인덱스 로드
 faiss_indexes = load_faiss_indexes(index_paths)
 
@@ -284,7 +282,6 @@ bnb_config = BitsAndBytesConfig(
     bnb_4bit_compute_dtype=torch.bfloat16,
 )
 
-@st.cache_data
 # 각 문서 리스트를 FAISS DB에 넣기
 mct_db = FAISS.from_documents(documents=mct_docs, embedding=embedding)
 month_db = FAISS.from_documents(documents=month_docs, embedding=embedding)
@@ -296,7 +293,6 @@ kakaomap_reviews_db = FAISS.from_documents(
     documents=kakaomap_reviews_docs, embedding=embedding
 )
 
-@st.cache_data
 # 데이터베이스를 검색기로 사용하기 위해 retriever 변수에 할당
 mct_retriever = mct_db.as_retriever()
 month_retriever = month_db.as_retriever()
