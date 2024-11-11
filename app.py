@@ -32,153 +32,90 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
 import faiss
-import json
-import torch
 
-# 1. 설정 및 상수
-
-# CONFIG 객체를 import문 다음, 다른 코드들 이전에 정의
-CONFIG = {
-    'model_name': "jhgan/ko-sroberta-multitask",
-    'similarity_threshold': 0.7,
-    'retriever_weights': [0.6, 0.4],
-    'search_params': {
-        'k': 4,
-        'fetch_k': 10,
-        'lambda_mult': 0.6,
-        'score_threshold': 0.6
-    }
-}
-
-# .env 파일 경로 지정
-load_dotenv()
-google_api_key = os.getenv("GOOGLE_API_KEY_1")
-
-# 상단에 CSS 스타일 정의
-STYLES = """
-<style>
-/* Selectbox 레이블 숨기기 및 여백 조정 */
-.stSelectbox label { 
-    display: none; 
-}
-.stSelectbox div[role='combobox'] { 
-    margin-top: -20px; 
-}
-
-/* Radio button 레이블 숨기기 및 여백 조정 */
-.stRadio > label { 
-    display: none; 
-}
-.stRadio > div { 
-    margin-top: -20px; 
-}
-</style>
-"""
-
+# Streamlit 페이지 설정
 st.set_page_config(page_title="🍊감귤톡")
 st.markdown(STYLES, unsafe_allow_html=True)
 
-# 메인 UI
+# Streamlit App UId
 st.title("🍊감귤톡, 제주도 여행 메이트")
-st.write("")
-st.info("제주도 여행 메이트 감귤톡이 제주도의 방방곡곡을 알려줄게 🏝️")
+st.info("제주도 여행 메이트 감귤톡이 제주도의 방방곡곡을 알려줄게🌴")
 
 # 이미지 로드 설정
-image_path = "https://img4.daumcdn.net/thumb/R658x0.q70/?fname=https://t1.daumcdn.net/news/202105/25/linkagelab/20210525013157546odxh.jpg"
-image_html = f"""
-<div style="display: flex; justify-content: center;">
-    <img src="{image_path}" alt="centered image" width="50%">
-</div>
-"""
-st.markdown(image_html, unsafe_allow_html=True)
+if "image_loaded" not in st.session_state:
+    st.session_state.image_loaded = True
+    st.session_state.image_html = """
+    <div style="display: flex; justify-content: center;">
+        <img src="https://img4.daumcdn.net/thumb/R658x0.q70/?fname=https://t1.daumcdn.net/news/202105/25/linkagelab/20210525013157546odxh.jpg" alt="centered image" width="50%">
+    </div>
+    """
 
-# 대화 초기화 함수 정의
-def clear_chat_history():
-    st.session_state.messages = [
-        {"role": "assistant", "content": "어떤 곳을 찾아줄까?"}
+# # 이미지 표시 (세션 상태에서 확인)
+# if st.session_state.image_loaded:
+#     st.markdown(st.session_state.image_html, unsafe_allow_html=True)
+#     # 이미지가 표시된 후 다시 상태를 False로 변경하여 중복 표시 방지
+#     st.session_state.image_loaded = False
+
+st.write("")  # 여백 추가
+
+# .env 파일 경로 지정
+load_dotenv()
+google_api_key = os.getenv("GOOGLE_API_KEY")
+
+
+# CSV 파일 로드
+@st.cache_data
+
+# CSV 파일 로드
+def load_data():
+    csv_file_paths = [
+        "./data/review_documents.csv",
+        "./data/mct_documents.csv",
+        "./data/trrsrt_documents.csv",
     ]
-    
-# 사이드바 구성
-with st.sidebar:
-    st.title("🍊감귤톡이 다 찾아줄게🍊")
-    st.write("")
-    
-    st.subheader("원하는 #키워드를 골라봐")
-    keywords = st.selectbox(
-        "",
-        [
-            "착한가격업소",
-            "럭셔리트래블인제주",
-            "우수관광사업체",
-            "무장애관광",
-            "안전여행스탬프",
-            "향토음식",
-            "한식",
-            "카페",
-            "해물뚝배기",
-            "몸국",
-            "해장국",
-            "수제버거",
-            "흑돼지",
-            "해산물",
-            "일식",
-        ],
-        key="keywords",
-    )
-    
-    st.subheader("어떤 동네가 궁금해?")
-    locations = st.selectbox(
-        "",
-        (
-            "구좌",
-            "대정",
-            "서귀포",
-            "안덕",
-            "우도",
-            "애월",
-            "조천",
-            "제주시내",
-            "추자",
-            "한림",
-            "한경",
-        ),
-        key="locations"
-    )
-    st.write("")
+    dfs = []
 
-    st.subheader("평점 몇점 이상을 찾고 싶어?")
-    score = st.slider(
-        "리뷰 평점", 
-        min_value=3.0, 
-        max_value=5.0, 
-        value=4.0, 
-        step=0.05,
-        key="score"
-    )
-    
-    st.write("")
-    st.button("대화 초기화", on_click=clear_chat_history, key="clear_chat_sidebar")
-    st.caption("📨 감귤톡에 문의하세요 [Send email](mailto:happily2bus@gmail.com)")
+    with st.spinner("잠시만 기다려 주세요. 곧 나와요!"):  # 사용자 정의 스피너 메시지
+        dfs = [pd.read_csv(csv_file_path) for csv_file_path in csv_file_paths]
+
+    return dfs
 
 
-      
-# HuggingFaceEmbeddings 객체 초기화
-embedding = HuggingFaceEmbeddings(model_name=CONFIG['model_name'])
+dfs = load_data()
 
-# Google Generative AI API 설정 부분 이전에 memory 정의
-memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
-# 그 다음 llm과 chain 정의
-llm = ChatGoogleGenerativeAI(
+# FAISS 인덱스 파일 경로
+faiss_index_path = "./modules/faiss_index.index"
+
+# FAISS 인덱스 로드
+faiss_index = faiss.read_index(faiss_index_path)
+
+
+# 임베딩 모델 로드
+@st.cache_data
+def load_model():
+    return SentenceTransformer("jhgan/ko-sroberta-multitask")
+
+
+model_embedding = load_model()
+
+
+# Google Generative AI API 설정
+chat_model = ChatGoogleGenerativeAI(
     model="gemini-1.5-flash",
-    temperature=0.2,
+    api_key=google_api_key,
+    temperature=0.3,
     top_p=0.85,
-    frequency_penalty=0.1,
-    google_api_key=google_api_key,
-    credentials=None
+    frequency_penalty=0.3,
 )
 
-PROMPT_TEMPLATE = """
+# 멀티턴 대화를 위한 Memory 설정
+memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+
+# 멀티턴 프롬프트 템플릿 설정 (COT 방식 적용)
+prompt_template = PromptTemplate(
+    input_variables=["input_text", "search_results", "chat_history"],
+    template="""
     ### 역할
     당신은 제주도 맛집과 관광지 추천 전문가입니다. 질문을 받을 때 논리적으로 생각한 후 단계별로 답변을 제공합니다.
     복잡한 질문일수록 천천히 생각하고 검색된 데이터를 바탕으로 친근하고 정겨운 답변을 제공합니다.
@@ -198,7 +135,7 @@ PROMPT_TEMPLATE = """
     6. 주소를 바탕으로 실제 검색되는 장소를 아래 예시 링크 형식으로 답변하세요.
       - 네이버 지도 확인하기: (https://map.naver.com/p/search/제주도+<place>장소명</place>)
     7. 실제로 존재하는 식당과 관광지명을 추천해주어야 하며, %%흑돼지 맛집, 횟집 1 등 가게명이 명확하지 않은 답변은 하지 말아주세요.
-    8. 답변 내용에 따라 폰트사이즈, 불렛, 순서 활용하고 문단을 구분하여 가독성이 좋게 해주세요.
+    8. 문장이 구분되도록 문단을 구분해주세요.
 
     검색된 문서 내용:
     {search_results}
@@ -209,313 +146,117 @@ PROMPT_TEMPLATE = """
     사용자의 질문: {input_text}
 
     논리적인 사고 후 사용자에게 제공할 답변:
+    """,
+)
+
+
+# 검색 및 응답 생성 함수
+def search_faiss(query_embedding, k=5):
     """
-    
-prompt_template = PromptTemplate(
-    input_variables=["input_text", "search_results", "chat_history"],
-    template=PROMPT_TEMPLATE
-)
-
-# 체인 생성
-chain = LLMChain(
-    prompt=prompt_template,
-    llm=llm,
-    output_parser=StrOutputParser(),
-)
-
-# RAG
-
-# 디바이스 설정
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Device is {device}.")
-
-# JSON 파일 경로 설정
-file_paths = {
-    "mct": "/Users/naeun/bigcontest_chatbot/data/mct.json",
-    "month": "/Users/naeun/bigcontest_chatbot/data/month.json",
-    "wkday": "/Users/naeun/bigcontest_chatbot/data/wkday.json",
-    "mop_sentiment": "/Users/naeun/bigcontest_chatbot/data/merge_mop_sentiment.json",
-    "menu": "/Users/naeun/bigcontest_chatbot/data/mct_menus.json",
-    "visit_jeju": "/Users/naeun/bigcontest_chatbot/data/visit_jeju.json",
-    "kakaomap_reviews": "/Users/naeun/bigcontest_chatbot/data/kakaomap_reviews.json",
-}
-
-# 2. 초기화 함수들
-def initialize_retriever(db):
-    return db.as_retriever(
-        search_type="mmr",
-        search_kwargs=CONFIG['search_params']
+    FAISS에서 유사한 벡터를 검색하여 원본 데이터 반환
+    """
+    # FAISS 인덱스에서 유사한 벡터 검색
+    distances, indices = faiss_index.search(
+        np.array(query_embedding, dtype=np.float32), k
     )
 
-# 3. 유틸리티 함수들
-# JSON 파일 로드
-def load_json_files(file_paths):
-    data = {}
-    for key, path in file_paths.items():
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                data[key] = json.load(f)
-        except FileNotFoundError:
-            print(f"File not found: {path}")
-        except json.JSONDecodeError:
-            print(f"Error decoding JSON from file: {path}")
-    return data
+    # 검색된 인덱스를 바탕으로 원본 데이터 가져오기
+    search_results = []
+    total_length = 0  # 전체 길이 초기화
 
-# FAISS 인덱스 로드 시 오류 처리 함수 개선
-def load_faiss_indexes(index_paths):
-    indexes = {}
-    for key, path in index_paths.items():
-        try:
-            if not os.path.exists(path):
-                print(f"Warning: Index file not found: {path}")
-                continue  # 파일이 없으면 건너뛰기
-            indexes[key] = faiss.read_index(path)  # FAISS 인덱스 로드
-        except faiss.FaissException as e:
-            print(f"FAISS error loading index '{key}': {e}")
-        except Exception as e:
-            print(f"Unexpected error loading index '{key}': {e}")
-    return indexes
+    for idx in indices[0]:
+        found = False  # 찾은 데이터프레임 체크
+        for df in dfs:
+            if (
+                total_length + len(df) > idx
+            ):  # 현재 데이터프레임에서 유효한 인덱스인지 체크
+                if idx - total_length >= 0 and idx - total_length < len(df):
+                    search_results.append(df.iloc[idx - total_length])  # 인덱스 재조정
+                found = True
+                break
+            total_length += len(df)  # 전체 길이에 데이터프레임 길이 추가
+        if found:  # 이미 찾은 경우 더 이상 반복할 필요 없음
+            continue
 
-# 4. 핵심 기능 함수들
+    return search_results
 
-# 통합된 응답 생성 함수를 먼저 정의
-def get_chatbot_response(query, memory, chain):
-    try:
-        # 검색 결과 추출
-        search_results = flexible_function_call_search(query)
-        if not search_results:
-            return "관련된 정보를 찾을 수 없습니다."
 
-        # 검색 결과를 문자열로 변환
-        search_results_str = "\n".join(
-            [doc.page_content for doc in search_results]
-        ).strip()
-        if not search_results_str:
-            return "검색된 내용이 없어서 답변을 드릴 수 없습니다."
+# 대화형 응답 생성 함수
+def generate_response(user_input):
+    """
+    사용자의 입력을 받아 FAISS 검색 후 응답 생성 (COT 적용)
+    """
+    # 사용자의 질문을 임베딩으로 변환
+    query_embedding = model_embedding.encode([user_input])
 
-        # 대화 기록 로드
-        chat_history = memory.load_memory_variables({}).get("chat_history", "")
+    # FAISS 검색 수행
+    search_results = search_faiss(query_embedding)
 
-        # LLMChain에 전달할 입력 데이터 구성
-        input_data = {
-            "input_text": query,
-            "search_results": search_results_str,
-            "chat_history": chat_history,
-        }
+    # 검색된 결과를 텍스트 형식으로 변환
+    search_results_str = "\n".join([result.to_string() for result in search_results])
 
-        try:
-            output = chain(input_data)
-            output_text = output.get("text", str(output))
-        except Exception as e:
-            print(f"LLM 응답 생성 중 오류 발생: {e}")
-            return "응답을 생성하는 과정에서 오류가 발생했습니다. 다시 시도해주세요."
+    # PromptTemplate에 검색된 결과와 대화 기록 채우기
+    filled_prompt = prompt_template.format(
+        input_text=user_input,
+        search_results=search_results_str,
+        chat_history=memory.load_memory_variables({})["chat_history"],
+    )
 
-        # 대화 기록에 입력 및 출력 저장
-        memory.save_context({"input": query}, {"output": output_text})
-        return output_text
+    # 1회 호출에서 5000 토큰 제한이므로 적절하게 텍스트를 나누어 처리
+    response_parts = []
+    while filled_prompt:
+        # 최대 5000 토큰까지 잘라서 호출
+        part = filled_prompt[:5000]
+        filled_prompt = filled_prompt[5000:]
 
-    except Exception as e:
-        print(f"검색 또는 응답 생성 중 오류 발생: {e}")
-        return "오류가 발생했습니다. 다시 시도해주세요."
+        # Google Generative AI API 호출 (대신 사용할 모델로 수정 가능)
+        response = chat_model.invoke([{"role": "user", "content": part}])
+        response_parts.append(response.content)
 
-# 임베딩 캐싱 추가
-@st.cache_data(ttl=3600)
-def get_embedding(text):
-    return embedding.embed_query(text)
+        # 호출 횟수 체크
+        if len(response_parts) >= 3:
+            break  # 최대 3회 호출 제한
 
-def flexible_function_call_search(query):
-    try:
-        # 입력 쿼리의 임베딩을 가져옵니다.
-        input_embedding = get_embedding(query)
+    # 메모리에 대화 기록 저장
+    for part in response_parts:
+        memory.save_context({"input": user_input}, {"output": part})
 
-        # 리트리버와 설명을 정의
-        retrievers_info = {
-            "mct": {
-                "retriever": mct_retriever,
-                "description": "식당 정보 및 연이용 비중 및 금액 비중",
-            },
-            "month": {
-                "retriever": month_retriever,
-                "description": "관광지 월별 조회수",
-            },
-            "wkday": {
-                "retriever": wkday_retriever,
-                "description": "주별 일별 조회수 및 연령별 성별별 선호도",
-            },
-            "mop": {
-                "retriever": mop_retriever,
-                "description": "관광지 전체 감성분석 데이터",
-            },
-            "menus": {
-                "retriever": menus_retriever,
-                "description": "식당명 및 메뉴 및 금액",
-            },
-            "visit": {
-                "retriever": visit_retriever,
-                "description": "관광지 핵심 워드 및 정보",
-            },
-            "kakaomap_reviews": {
-                "retriever": kakaomap_reviews_retriever,
-                "description": "리뷰 데이터",
-            },
-        }
+    # 최종 응답 합치기
+    return "\n".join(response_parts)
 
-        # 각 리트리버의 설명을 임베딩합니다.
-        retriever_embeddings = {
-            key: embedding.embed_query(info["description"])
-            for key, info in retrievers_info.items()
-        }
 
-        # 코사인 유사도 계산
-        similarities = {
-            key: util.cos_sim(input_embedding, embed).item()
-            for key, embed in retriever_embeddings.items()
-        }
-
-        # 유사도가 임계값 이상인 리트리버 선택
-        similarity_threshold = CONFIG['similarity_threshold']
-        selected_retrievers = sorted(
-            [(key, sim) for key, sim in similarities.items() if sim > similarity_threshold],
-            key=lambda x: x[1],
-            reverse=True,
-        )
-
-        # 선택된 리트리버를 사용해 문서 검색 수행
-        results = []
-        for retriever_key, _ in selected_retrievers:
-            try:
-                retriever = retrievers_info[retriever_key]["retriever"]
-                result = retriever.get_relevant_documents(query)
-                results.extend(result)
-            except Exception as e:
-                print(f"{retriever_key} 리트리버에서 오류 발생: {e}")
-                continue
-
-        return results if results else "관련된 정보가 없습니다."
-
-    except Exception as e:
-        print(f"오류 발생: {e}")
-        return "오류가 발생했습니다."
-
+# 스트림릿 챗봇 인터페이스
 if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "assistant", "content": "어떤 곳을 찾아줄까?"}
-    ]
+    st.session_state.messages = []  # messages 초기화
 
-# 그 다음 채팅 입력 처리 코드
-if prompt := st.chat_input("메시지를 입력하세요", key="user_input"):  # := 연산자 사용
-    with st.spinner("🤔 생각하는 중..."):
-        try:
-            enhanced_prompt = f"""
-                사용자 입력: {prompt}
-                키워드: {st.session_state.keywords if 'keywords' in st.session_state else '없음'}
-                지역: {st.session_state.locations if 'locations' in st.session_state else '없음'}
-                최소 평점: {st.session_state.score if 'score' in st.session_state else '없음'}
-            """.strip()
-            
-            response = get_chatbot_response(enhanced_prompt, memory, chain)
-            
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            st.session_state.messages.append({"role": "assistant", "content": response})
-            
-            with st.chat_message("assistant", avatar="🍊"):
-                st.markdown(response)
-        except Exception as e:
-            st.error(f"오류 발생: {e}")
-            st.error("응답을 생성하는 과정에서 오류가 발생했습니다. 다시 시도해주세요.")
+# 이미지 표시 (세션 상태 유지)
+st.markdown(st.session_state.image_html, unsafe_allow_html=True)
 
-# 텍스트 표시
-st.write("")
+# 이전 대화 메시지 표시
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.write(msg["content"])
 
-# 메시지 표시 - 한 번만 실행
-for message in st.session_state.messages:
-    with st.chat_message(message["role"], avatar="🐬"):
-        st.write(message["content"])
+if prompt := st.chat_input():
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.write(prompt)
 
-# 사이드바에 초기화 버튼 추가
-st.sidebar.button("대화 초기화", on_click=clear_chat_history)
+    # 마지막 메시지가 어시스턴트의 메시지가 아닐 경우 새 응답 생성
+    if st.session_state.messages[-1]["role"] != "assistant":
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                response = generate_response(prompt)
+                placeholder = st.empty()
+                full_response = ""  # 응답 초기화
 
-# @st.cache_resource 데코레이터를 수정하고 TTL 추가
-@st.cache_resource(ttl=3600)  # 1시간 캐시
-def initialize_databases():
-    try:
-        # JSON 데이터 로드
-        data = load_json_files(file_paths)
-        
-        # 진행 상황을 보여주는 progress bar 추가
-        progress_text = "데이터베이스 초기화 중..."
-        my_bar = st.progress(0, text=progress_text)
-        
-        # Document 객체 생성 및 FAISS DB 초기화를 단계별로 진행
-        dbs = {}
-        total_steps = 7  # 총 처리해야 할 DB 수
-        
-        # 각 데이터셋 처리를 함수로 분리
-        def process_dataset(data_key, data_items, step):
-            docs = [Document(page_content=item.get("가게명" if "가게" in data_key else "관광지명", ""), 
-                           metadata=item) for item in data_items]
-            db = FAISS.from_documents(documents=docs, embedding=embedding)
-            my_bar.progress((step + 1) / total_steps, 
-                          text=f"{progress_text} ({step + 1}/{total_steps})")
-            return db
-        
-        # 각 데이터셋 순차적 처리
-        datasets = [
-            ("mct", data["mct"]),
-            ("month", data["month"]),
-            ("wkday", data["wkday"]),
-            ("mop_sentiment", data["mop_sentiment"]),
-            ("menu", data["menu"]),
-            ("visit_jeju", data["visit_jeju"]),
-            ("kakaomap_reviews", data["kakaomap_reviews"])
-        ]
-        
-        for i, (key, items) in enumerate(datasets):
-            dbs[f"{key}_db"] = process_dataset(key, items, i)
-        
-        my_bar.empty()  # progress bar 제거
-        return dbs
-        
-    except Exception as e:
-        st.error(f"데이터베이스 초기화 중 오류 발생: {str(e)}")
-        return None
+                # 응답을 문자열로 변환
+                if isinstance(response, str):
+                    full_response = response
+                else:
+                    full_response = response.text
 
-# 챗봇 시작 시 이전 대화 기록 불러오기
-def main():
-    try:
-        with st.spinner("데이터베이스 초기화 중..."):
-            # 데이터베이스 초기화
-            dbs = initialize_databases()
-            if dbs is None:
-                st.error("데이터베이스 초기화 실패")
-                return
-            # Retriever 초기화
-            global mct_retriever, month_retriever, wkday_retriever, mop_retriever
-            global menus_retriever, visit_retriever, kakaomap_reviews_retriever
-            
-            # BM25 검색기 생성
-            mct_bm25_retriever = BM25Retriever.from_texts([doc.page_content for doc in mct_docs])
-            month_bm25_retriever = BM25Retriever.from_texts([doc.page_content for doc in month_docs])
-            wkday_bm25_retriever = BM25Retriever.from_texts([doc.page_content for doc in wkday_docs])
-            mop_bm25_retriever = BM25Retriever.from_texts([doc.page_content for doc in mop_docs])
-            menus_bm25_retriever = BM25Retriever.from_texts([doc.page_content for doc in menu_docs])
-            visit_bm25_retriever = BM25Retriever.from_texts([doc.page_content for doc in visit_docs])
-            kakaomap_reviews_bm25_retriever = BM25Retriever.from_texts([doc.page_content for doc in kakaomap_reviews_docs])
-            
-            
-            # Retriever 초기화
-            mct_retriever = dbs["mct_db"].as_retriever()
-            month_retriever = dbs["month_db"].as_retriever()
-            wkday_retriever = dbs["wkday_db"].as_retriever()
-            mop_retriever = dbs["mop_db"].as_retriever()
-            menus_retriever = dbs["menus_db"].as_retriever()
-            visit_retriever = dbs["visit_db"].as_retriever()
-            kakaomap_reviews_retriever = dbs["kakaomap_reviews_db"].as_retriever()    
-    
-    except Exception as e:
-        st.error(f"초기화 중 오류 발생: {e}")
-    
-    
-# 메인 함수 실행
-if __name__ == "__main__":
-    main()
+                # 전체 응답 표시
+                placeholder.markdown(full_response)
+        message = {"role": "assistant", "content": full_response}
+        st.session_state.messages.append(message)
