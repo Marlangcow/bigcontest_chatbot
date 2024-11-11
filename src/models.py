@@ -4,12 +4,11 @@ from transformers import (
     BitsAndBytesConfig,
     AutoModelForCausalLM,
 )
-import torch
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains import LLMChain
 from langchain_core.output_parsers import StrOutputParser
 from langchain.memory import ConversationBufferMemory
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from .config import GOOGLE_API_KEY
 
 

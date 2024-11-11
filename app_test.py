@@ -28,7 +28,6 @@ def main():
         ]
 
     display_messages()
-    handle_streamlit_input(chain, memory)
 
     # JSON 파일 경로 설정
     file_paths = {

@@ -1,11 +1,10 @@
 import json
-import faiss
 import os
+import torch
 from langchain.docstore.document import Document
 from langchain.docstore.document import Document
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from transformers import AutoTokenizer, AutoModel
-import torch
 
 
 def load_json_files(file_paths):

@@ -5,6 +5,9 @@ channels:
   - defaults
 dependencies:
   - python=3.11
+  - pytorch::pytorch>=2.0.1
+  - pytorch::torchvision>=0.15.2
+  - pytorch::torchaudio>=2.0.2
   - pip
   - streamlit>=1.38.0
   - selenium>=4.26.0
@@ -12,7 +15,6 @@ dependencies:
   - pandas>=2.2.3
   - tqdm>=4.66.6
   - aiohttp>=3.10.10
-  - pytorch>=2.0.1
   - numpy>=1.24.0
   - dask>=2024.1.0
   - faiss-cpu>=1.7.4
@@ -40,5 +42,4 @@ dependencies:
       - bitsandbytes>=0.41.0
       - rank-bm25>=0.2.2
       - google-generativeai>=0.3.0
-      - langchain-core>=0.3.15
       - langchain-huggingface>=0.0.6
