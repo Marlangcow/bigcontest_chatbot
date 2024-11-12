@@ -1,13 +1,11 @@
 import json
 import os
-import torch
-from langchain.docstore.document import Document
+import faiss
 from langchain.docstore.document import Document
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from transformers import AutoTokenizer, AutoModel
 
 
-def load_json_files(file_paths):
+def load_json_files(FILE_PATHS):
     """
     주어진 파일 경로에서 JSON 파일들을 로드합니다.
 
@@ -27,7 +25,7 @@ def load_json_files(file_paths):
         dict: 로드된 JSON 데이터를 담은 딕셔너리
     """
     data = {}
-    for key, path in file_paths.items():
+    for key, path in FILE_PATHS.items():
         try:
             with open(path, "r", encoding="utf-8") as file:
                 data[key] = json.load(file)
@@ -40,9 +38,9 @@ def load_json_files(file_paths):
     return data
 
 
-def load_faiss_indexes(index_paths):
+def load_faiss_indexes(INDEX_PATHS):
     indexes = {}
-    for key, path in index_paths.items():
+    for key, path in INDEX_PATHS.items():
         if os.path.exists(path):
             try:
                 indexes[key] = faiss.read_index(path)
@@ -85,8 +83,8 @@ def create_documents(data):
 
 
 def initialize_embeddings(model_name="jhgan/ko-sroberta-multitask"):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModel.from_pretrained(model_name).to(device)
+    """
+    사용자 입력 임베딩을 위한 HuggingFaceEmbeddings만 초기화합니다.
+    """
     embedding = HuggingFaceEmbeddings(model_name=model_name)
-    return embedding, tokenizer, model
+    return embedding

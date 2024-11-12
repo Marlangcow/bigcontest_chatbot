@@ -1,13 +1,23 @@
 import streamlit as st
 
 
-def initialize_streamlit_ui():
-    st.set_page_config(
-        page_title="🍊감귤톡",
-        page_icon="🍊",
-        layout="wide",
-    )
+st.set_page_config(
+    page_title="감귤톡",
+    page_icon="🍊",
+    layout="wide",
+)
 
+
+def initialize_streamlit_ui():
+    # st.session_state.messages 초기화
+    if "messages" not in st.session_state:
+        st.session_state.messages = [
+            {"role": "assistant", "content": "어떤 곳을 찾아줄까?"}
+        ]
+    # 메시지 표시
+    display_messages()
+
+    # 제목 및 정보 텍스트 설정
     st.title("🍊감귤톡, 제주도 여행 메이트")
     st.write("")
     st.info("제주도 여행 메이트 감귤톡이 제주도의 방방곡곡을 알려줄게 🏝️")
@@ -21,12 +31,7 @@ def initialize_streamlit_ui():
 
 def display_main_image():
     image_path = "https://img4.daumcdn.net/thumb/R658x0.q70/?fname=https://t1.daumcdn.net/news/202105/25/linkagelab/20210525013157546odxh.jpg"
-    image_html = f"""
-    <div style="display: flex; justify-content: center;">
-        <img src="{image_path}" alt="centered image" width="50%">
-    </div>
-    """
-    st.markdown(image_html, unsafe_allow_html=True)
+    st.image(image_path, use_container_width=True)
     st.write("")
 
 
@@ -37,12 +42,12 @@ def setup_sidebar():
     setup_location_selection()
     setup_score_selection()
     st.button("대화 초기화", on_click=clear_chat_history)
+    st.write("")
     st.caption("📨 감귤톡에 문의하기 [Send email](mailto:happily2bus@gmail.com)")
 
 
 def setup_keyword_selection():
     st.subheader("원하는 #키워드를 골라봐")
-    remove_selectbox_label()
     keywords = st.selectbox(
         "",
         [
@@ -63,13 +68,13 @@ def setup_keyword_selection():
             "일식",
         ],
         key="keywords",
+        label_visibility="collapsed",
     )
     st.write("")
 
 
 def setup_location_selection():
     st.subheader("어떤 장소가 궁금해?")
-    remove_radio_label()
     locations = st.selectbox(
         "",
         [
@@ -85,6 +90,8 @@ def setup_location_selection():
             "한림",
             "한경",
         ],
+        key="locations",
+        label_visibility="collapsed",
     )
     st.write("")
 
@@ -95,51 +102,10 @@ def setup_score_selection():
     st.write("")
 
 
-def remove_selectbox_label():
-    st.markdown(
-        """
-        <style>
-        .stSelectbox label { display: none; }
-        .stSelectbox div[role='combobox'] { margin-top: -20px; }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def remove_radio_label():
-    st.markdown(
-        """
-        <style>
-        .stRadio > label { display: none; }
-        .stRadio > div { margin-top: -20px; }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
 def display_messages():
     for message in st.session_state.messages:
-        with st.chat_message(
-            message["role"], avatar="🐬" if message["role"] == "assistant" else None
-        ):
-            st.markdown(message["content"])
-
-
-def handle_streamlit_input(chain, memory):
-    if prompt := st.chat_input("질문을 입력하세요..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.write(prompt)
-
-        response = get_chatbot_response(prompt, memory, chain)
-
-        with st.chat_message("assistant", avatar="🐬"):
-            with st.spinner("생각하는 중..."):
-                st.markdown(response)
-
-        st.session_state.messages.append({"role": "assistant", "content": response})
+        role = "🍊" if message["role"] == "assistant" else "👤"
+        st.write(f"{role} {message['content']}")
 
 
 def clear_chat_history():

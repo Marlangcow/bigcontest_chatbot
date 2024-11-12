@@ -3,7 +3,7 @@ import google.generativeai as genai
 import streamlit as st
 
 # API 키 설정
-GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+GOOGLE_API_KEY = st.secrets["google_api_key"]
 
 # 파일 경로 설정
 MODULE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

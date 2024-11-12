@@ -1,84 +1,189 @@
-import streamlit as st
-from dotenv import load_dotenv
 from src.config import *
 from src.data_loader import *
 from src.models import *
 from src.retrievers import *
 from src.chatbot import *
-from src.ui import *
 from src.prompts import get_chat_prompt
-from langchain_google_genai import ChatGoogleGenerativeAI
 from src.ui import (
     initialize_streamlit_ui,
-    display_messages,
-    handle_streamlit_input,
+    display_main_image,
+    setup_sidebar,
+    setup_keyword_selection,
+    setup_location_selection,
+    setup_score_selection,
+    clear_chat_history,
 )
+from langchain.memory import ConversationBufferMemory
+import streamlit as st
+import gzip
+import pickle
+
+# Google API 키 불러오기
+google_api_key = st.secrets["google_api_key"]
 
 
-def load_environment():
-    load_dotenv()
+def manage_chat_history():
+    """채팅 히스토리 관리 함수"""
+    if len(st.session_state.messages) > st.session_state.max_messages:
+        # 가장 오래된 메시지 제거 (처음 2개는 시스템 메시지로 보존)
+        st.session_state.messages = (
+            st.session_state.messages[:2]
+            + st.session_state.messages[-(st.session_state.max_messages - 2) :]
+        )
+
+        # 메모리도 함께 정리
+        chat_history = st.session_state.memory.load_memory_variables({})["chat_history"]
+        if len(chat_history) > st.session_state.max_messages:
+            st.session_state.memory.clear()
+            # 최근 대화만 다시 저장
+            for msg in st.session_state.messages[2:]:  # 시스템 메시지 제외
+                if msg["role"] == "user":
+                    st.session_state.memory.save_context(
+                        {"input": msg["content"]}, {"output": ""}
+                    )
+                elif msg["role"] == "assistant":
+                    st.session_state.memory.save_context(
+                        {"input": ""}, {"output": msg["content"]}
+                    )
+
+
+class DocumentSearcher:
+    def __init__(self, retriever_path: str):
+        """
+        문서 검색기 초기화
+
+        Args:
+            retriever_path (str): 앙상블 리트리버가 저장된 파일 경로
+        """
+        self.ensemble_retrievers = load_ensemble_retrievers(retriever_path)
+
+    def search(self, query: str, category: str, top_k: int = 3):
+        """
+        사용자 쿼리에 따른 문서 검색
+
+        Args:
+            query (str): 사용자 검색어
+            category (str): 검색할 문서 카테고리
+            top_k (int): 반환할 문서 개수
+
+        Returns:
+            list: 관련 문서 리스트
+        """
+        try:
+            if category not in self.ensemble_retrievers:
+                raise ValueError(f"유효하지 않은 카테고리입니다: {category}")
+
+            retriever = self.ensemble_retrievers[category]
+            results = retriever.get_relevant_documents(query)
+            return results[:top_k]
+
+        except Exception as e:
+            print(f"검색 중 오류 발생: {str(e)}")
+            return []
+
+
+def handle_streamlit_input(chain, memory, prompt):
+    try:
+        # 디버깅을 위한 로그 추가
+        st.write("사용자 입력:", prompt)
+        chat_history = memory.load_memory_variables({})["chat_history"]
+        st.write("대화 기록:", chat_history)
+
+        # Chain 실행
+        response = chain(
+            {
+                "user_input": prompt,
+                "chat_history": chat_history,
+                "keyword": st.session_state.get("keywords", ""),
+                "location": st.session_state.get("locations", ""),
+                "min_score": st.session_state.get("score", 4.5),
+                "search_results": "search_results",
+            }
+        )
+
+        # 응답 처리
+        st.markdown(response["output"])
+        st.session_state.messages.append(
+            {"role": "assistant", "content": response["output"]}
+        )
+        manage_chat_history()  # 히스토리 관리 함수 호출
+
+        # 메모리 업데이트
+        memory.save_context({"input": prompt}, {"output": response["output"]})
+
+    except Exception as e:
+        st.error(f"응답 생성 중 오류 발생: {str(e)}")
+        print(f"오류 상세: {str(e)}")  # 디버깅용
 
 
 def main():
     initialize_streamlit_ui()
+
+    # st.session_state 변수 초기화
+    if "memory" not in st.session_state:
+        # ConversationBufferMemory를 사용하여 메모리 초기화
+        st.session_state.memory = ConversationBufferMemory(memory_key="chat_history")
 
     if "messages" not in st.session_state:
         st.session_state.messages = [
             {"role": "assistant", "content": "어떤 곳을 찾아줄까?"}
         ]
 
-    display_messages()
+    # 필요한 구성 요소를 초기화
+    if "chain" not in st.session_state:
+        llm = initialize_llm()  # LLM 초기화
+        prompt_template = get_chat_prompt()  # 프롬프트 템플릿 가져오기
+        st.session_state.chain = create_chain(
+            llm, prompt_template, memory=st.session_state.memory
+        )
 
-    # JSON 파일 경로 설정
-    file_paths = {
-        "mct": "/data/mct.json",
-        "month": "/data/month.json",
-        "wkday": "/data/wkday.json",
-        "mop_sentiment": "/data/merge_mop_sentiment.json",
-        "menu": "/data/mct_menus.json",
-        "visit_jeju": "/data/visit_jeju.json",
-        "kakaomap_reviews": "/data/kakaomap_reviews.json",
-    }
+    if "retrievers" not in st.session_state:
+        # 실제 파일 경로로 앙상블 리트리버 로드
+        file_path = (
+            "./data/ensemble_retrievers.pkl"  # 이제 ZIP 파일이 아닌 pkl 파일 경로
+        )
 
-    # FAISS 인덱스 경로 설정
-    index_paths = {
-        "mct": "/data/faiss_index/mct_index_pq.faiss",
-        "month": "/data/faiss_index/month_index_pq.faiss",
-        "wkday": "/data/faiss_index/wkday_index_pq.faiss",
-        "menu": "/data/faiss_index/menu.faiss",
-        "visit": "/data/faiss_index/visit_jeju.faiss",
-        "kakaomap_reviews": "/data/faiss_index/kakaomap_reviews.faiss",
-    }
+        try:
+            # pkl 파일로부터 데이터 로드
+            retrievers = load_tensor_from_pkl(file_path)
 
-    # 데이터 및 인덱스 로드
-    data = load_json_files(file_paths)
-    faiss_indexes = load_faiss_indexes(index_paths)
+            # 데이터가 잘 로드되었는지 확인
+            st.write("데이터가 성공적으로 로드되었습니다!")
+            st.write(retrievers)  # 로드된 데이터 출력
 
-    # Document 및 Embedding 초기화
-    docs = create_documents(data)
-    embedding, tokenizer, model = initialize_embeddings()
+            # 세션에 retrievers 저장
+            st.session_state.retrievers = retrievers
+        except Exception as e:
+            st.error(f"데이터 로딩 중 오류 발생: {str(e)}")
 
-    # Retriever 및 Ensemble Retriever 초기화
-    retrievers = initialize_faiss_retrievers(docs, embedding)
-    bm25_retrievers = initialize_bm25_retrievers(docs)
-    ensemble_retrievers = initialize_ensemble_retrievers(retrievers, bm25_retrievers)
+    # 이후 retrievers를 사용하는 코드 처리 (예: 사용자 질의 처리 등)
+    if "retrievers" in st.session_state:
+        st.write("retrievers 데이터가 세션에 로드되었습니다.")
 
-    # LLM Chain 및 Memory 설정
-    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+    # 이전 메시지 표시
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
-    prompt_template = get_chat_prompt()
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",
-        temperature=0.2,  # 더 낮은 temperature로 설정해 할루시네이션 줄임
-        top_p=0.85,  # top_p를 조정해 더 예측 가능한 답변 생성
-        frequency_penalty=0.1,  # 같은 단어의 반복을 줄이기 위해 패널티 추가
-    )
+    # 사용자 입력 처리
+    if prompt := st.chat_input("무엇이 궁금하신가요?"):
+        # 사용자 메시지 표시
+        st.chat_message("user").markdown(prompt)
+        st.session_state.messages.append({"role": "user", "content": prompt})
 
-    chain = LLMChain(prompt=prompt_template, llm=llm, output_parser=StrOutputParser())
-
-    # UI 메시지 출력 및 입력 처리
-    display_messages()
-    handle_streamlit_input(chain, memory)
+        # 챗봇 응답 생성
+        with st.chat_message("assistant"):
+            with st.spinner("답변을 생성하고 있습니다..."):
+                response = get_chatbot_response(
+                    user_input=prompt,
+                    memory=st.session_state.memory,
+                    chain=st.session_state.chain,
+                    retrievers=st.session_state.retrievers,
+                )
+                st.markdown(response)
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": response}
+                )
 
 
 if __name__ == "__main__":
