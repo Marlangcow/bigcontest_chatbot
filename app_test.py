@@ -1,5 +1,6 @@
 import streamlit as st
 import json
+import multiprocessing
 
 st.set_page_config(
     page_title="감귤톡",
@@ -29,6 +30,19 @@ import gzip
 # Google API 키 불러오기
 google_api_key = st.secrets["google_api_key"]
 
+# .json 파일 경로 가져오기
+retriever_file_paths = glob.glob(
+    "/Users/naeun/bigcontest_chatbot/data/json_retrievers/*.json"
+)
+
+
+# 리트리버 데이터 로드 (병렬화 적용)
+def load_retrievers_parallel(file_paths):
+    # 멀티프로세싱을 사용하여 리트리버 파일을 병렬로 로드합니다.
+    with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
+        retriever_data = pool.map(load_ensemble_retriever_from_json, file_paths)
+    return retriever_data
+
 
 # 채팅 기록 관리 함수
 def manage_chat_history():
@@ -49,12 +63,6 @@ def manage_chat_history():
                     st.session_state.memory.save_context(
                         {"input": ""}, {"output": msg["content"]}
                     )
-
-
-# .json 파일 경로 가져오기
-retriever_file_paths = glob.glob(
-    "/Users/naeun/bigcontest_chatbot/data/json_retrievers/*.json"
-)
 
 
 # 리트리버 데이터 로드
@@ -86,6 +94,15 @@ retriever_data = load_retrievers()
 def main():
     # Streamlit UI 초기화
     initialize_streamlit_ui()
+
+    # 세션 상태 변수 초기화
+    if "memory" not in st.session_state:
+        st.session_state.memory = ConversationBufferMemory(memory_key="chat_history")
+
+    # 초기 메시지 표시
+    if "initialized" not in st.session_state:
+        st.chat_message("assistant").markdown("어떤 곳을 찾아줄까? 🐬")
+        st.session_state.initialized = True
 
     # 세션 상태 변수 초기화
     if "memory" not in st.session_state:

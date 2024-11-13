@@ -2,6 +2,7 @@ from langchain.memory import ConversationBufferMemory
 from typing import List
 from langchain.schema import Document
 import torch
+from sentence_transformers import util
 from sentence_transformers import SentenceTransformer
 
 # 임베딩 모델 초기화
@@ -59,11 +60,13 @@ def flexible_function_call_search(query, retrievers):
 
     # 각 리트리버 설명에 대한 임베딩 계산
     retriever_embeddings = {
-        key: embedding.embed_query(value)
+        key: torch.tensor(embedding.encode(value), dtype=torch.float32)
         for key, value in retriever_descriptions.items()
     }
+
+    # 유사도 계산
     similarities = {
-        key: util.cos_sim(input_embedding, torch.tensor(embed)).item()
+        key: util.cos_sim(input_embedding, embed).item()
         for key, embed in retriever_embeddings.items()
     }
 

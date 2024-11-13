@@ -7,8 +7,6 @@ def initialize_streamlit_ui():
         st.session_state.messages = [
             {"role": "assistant", "content": "어떤 곳을 찾아줄까?"}
         ]
-    # 메시지 표시
-    display_messages()
 
     # 제목 및 정보 텍스트 설정
     st.title("🍊감귤톡, 제주도 여행 메이트")
@@ -18,13 +16,16 @@ def initialize_streamlit_ui():
     # 이미지 표시
     display_main_image()
 
+    # 메시지 표시
+    display_messages()
+
     with st.sidebar:
         setup_sidebar()
 
 
 def display_main_image():
     image_path = "https://img4.daumcdn.net/thumb/R658x0.q70/?fname=https://t1.daumcdn.net/news/202105/25/linkagelab/20210525013157546odxh.jpg"
-    st.image(image_path, use_container_width=True)
+    st.image(image_path, use_container_width=False)
     st.write("")
 
 
@@ -97,8 +98,13 @@ def setup_score_selection():
 
 def display_messages():
     for message in st.session_state.messages:
-        role = "🍊" if message["role"] == "assistant" else "👤"
+        role = "🐬" if message["role"] == "assistant" else "👤"
         st.write(f"{role} {message['content']}")
+    # 메시지가 없을 경우 기본 메시지 추가
+    if not st.session_state.messages:
+        st.session_state.messages.append(
+            {"role": "assistant", "content": "어떤 곳을 찾아줄까?"}
+        )
 
 
 def clear_chat_history():
