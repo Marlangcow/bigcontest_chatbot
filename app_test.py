@@ -137,28 +137,19 @@ def main():
             llm, prompt_template, memory=st.session_state.memory
         )
 
-    if "retrievers" not in st.session_state:
-        # 실제 파일 경로로 앙상블 리트리버 로드
-        file_path = (
-            "./data/ensemble_retrievers.pkl"  # 이제 ZIP 파일이 아닌 pkl 파일 경로
-        )
-
-        try:
-            # pkl 파일로부터 데이터 로드
-            retrievers = load_tensor_from_pkl(file_path)
-
-            # 데이터가 잘 로드되었는지 확인
-            st.write("데이터가 성공적으로 로드되었습니다!")
-            st.write(retrievers)  # 로드된 데이터 출력
-
-            # 세션에 retrievers 저장
-            st.session_state.retrievers = retrievers
-        except Exception as e:
-            st.error(f"데이터 로딩 중 오류 발생: {str(e)}")
+    # retrievers 불러오기
+    retrievers = load_retrievers_from_pkl(file_path)
+    if retrievers:
+        st.session_state.retrievers = retrievers
+        st.write("retrievers 데이터가 세션에 로드되었습니다.")
+    else:
+        st.write("retrievers 데이터 로드 실패")
 
     # 이후 retrievers를 사용하는 코드 처리 (예: 사용자 질의 처리 등)
     if "retrievers" in st.session_state:
         st.write("retrievers 데이터가 세션에 로드되었습니다.")
+    else:
+        st.write("retrievers 데이터가 세션에 로드되지 않았습니다.")
 
     # 이전 메시지 표시
     for message in st.session_state.messages:
