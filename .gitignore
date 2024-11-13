@@ -9,7 +9,17 @@ __pycache__/
 .pkl
 .json
 .index
-.faiss
+
+# Ignore .faiss files
+*.faiss
+
+# Ignore .json files in the json_retrievers directory
+data/json_retrievers/*.json
+
+# .gitignore에 대용량 파일 추가
+models/models--jhgan--ko-sroberta-multitask/blobs/5c06458b266887f2b2d71176c3fe4505249f737209a82a49bde44a7df57cf23d
+models/models--jhgan--ko-sroberta-multitask/blobs/e0143341f5e4653b7ece14cf0685f5fbf5b68a3926beed43754a498947c3bd77
+
 
 ### macOS ###
 # General
