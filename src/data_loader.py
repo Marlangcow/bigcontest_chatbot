@@ -1,6 +1,7 @@
 import json
 import os
 import faiss
+import pickle
 from langchain.docstore.document import Document
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
@@ -88,3 +89,9 @@ def initialize_embeddings(model_name="jhgan/ko-sroberta-multitask"):
     """
     embedding = HuggingFaceEmbeddings(model_name=model_name)
     return embedding
+
+
+# 리트리버 객체를 로드하는 함수
+def load_retriever_from_pickle(file_path):
+    with open(file_path, "rb") as f:
+        return pickle.load(f)

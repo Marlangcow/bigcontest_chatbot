@@ -24,11 +24,12 @@ INDEX_PATHS = {
     "mct": "/Users/naeun/bigcontest_chatbot/data/faiss_index/mct_index_pq.faiss",
     "month": "/Users/naeun/bigcontest_chatbot/data/faiss_index/month_index_pq.faiss",
     "wkday": "/Users/naeun/bigcontest_chatbot/data/faiss_index/wkday_index_pq.faiss",
-    # "mop": "/Users/naeun/bigcontest_chatbot/data/faiss_index/mop_db.faiss",  # 주석 처리된 경로
+    "mop": "/Users/naeun/bigcontest_chatbot/data/faiss_index/mop_flat_l2.faiss",
     "menu": "/Users/naeun/bigcontest_chatbot/data/faiss_index/menu.faiss",
     "visit": "/Users/naeun/bigcontest_chatbot/data/faiss_index/visit_jeju.faiss",
     "kakaomap_reviews": "/Users/naeun/bigcontest_chatbot/data/faiss_index/kakaomap_reviews.faiss",
 }
+
 
 # 위치 매핑
 LOCATIONS = {

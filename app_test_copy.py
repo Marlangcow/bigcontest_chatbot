@@ -457,8 +457,8 @@ def flexible_function_call_search(query):
 
     # 각 리트리버의 설명을 기반으로 임베딩을 생성합니다.
     retriever_embeddings = {
-        key: embedding.embed_query(info["description"])
-        for key, info in retrievers_info.items()
+        key: embedding.encode(value)  # embed_query를 encode로 변경
+        for key, embedding in retrievers.items()
     }
 
     # 입력 쿼리와 각 리트리버 설명 간의 코사인 유사도 계산

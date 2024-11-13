@@ -1,13 +1,6 @@
 import streamlit as st
 
 
-st.set_page_config(
-    page_title="감귤톡",
-    page_icon="🍊",
-    layout="wide",
-)
-
-
 def initialize_streamlit_ui():
     # st.session_state.messages 초기화
     if "messages" not in st.session_state:
@@ -49,7 +42,7 @@ def setup_sidebar():
 def setup_keyword_selection():
     st.subheader("원하는 #키워드를 골라봐")
     keywords = st.selectbox(
-        "",
+        "키워드 선택",
         [
             "착한가격업소",
             "럭셔리트래블인제주",
@@ -76,7 +69,7 @@ def setup_keyword_selection():
 def setup_location_selection():
     st.subheader("어떤 장소가 궁금해?")
     locations = st.selectbox(
-        "",
+        "장소 선택",
         [
             "구좌",
             "대정",

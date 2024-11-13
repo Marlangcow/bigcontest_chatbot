@@ -1,9 +1,12 @@
+import streamlit as st
+import json
+
+st.set_page_config(
+    page_title="감귤톡",
+    page_icon="🍊",
+    layout="wide",
+)
 from src.config import *
-from src.data_loader import *
-from src.models import *
-from src.retrievers import *
-from src.chatbot import *
-from src.prompts import get_chat_prompt
 from src.ui import (
     initialize_streamlit_ui,
     display_main_image,
@@ -13,30 +16,31 @@ from src.ui import (
     setup_score_selection,
     clear_chat_history,
 )
+from src.data_loader import *
+from src.models import *
+from src.retrievers import *
+from src.chatbot import *
+from src.prompts import get_chat_prompt
+
 from langchain.memory import ConversationBufferMemory
-import streamlit as st
+
 import gzip
-import pickle
 
 # Google API 키 불러오기
 google_api_key = st.secrets["google_api_key"]
 
 
+# 채팅 기록 관리 함수
 def manage_chat_history():
-    """채팅 히스토리 관리 함수"""
     if len(st.session_state.messages) > st.session_state.max_messages:
-        # 가장 오래된 메시지 제거 (처음 2개는 시스템 메시지로 보존)
         st.session_state.messages = (
             st.session_state.messages[:2]
             + st.session_state.messages[-(st.session_state.max_messages - 2) :]
         )
-
-        # 메모리도 함께 정리
         chat_history = st.session_state.memory.load_memory_variables({})["chat_history"]
         if len(chat_history) > st.session_state.max_messages:
             st.session_state.memory.clear()
-            # 최근 대화만 다시 저장
-            for msg in st.session_state.messages[2:]:  # 시스템 메시지 제외
+            for msg in st.session_state.messages[2:]:
                 if msg["role"] == "user":
                     st.session_state.memory.save_context(
                         {"input": msg["content"]}, {"output": ""}
@@ -47,81 +51,44 @@ def manage_chat_history():
                     )
 
 
-class DocumentSearcher:
-    def __init__(self, retriever_path: str):
-        """
-        문서 검색기 초기화
-
-        Args:
-            retriever_path (str): 앙상블 리트리버가 저장된 파일 경로
-        """
-        self.ensemble_retrievers = load_ensemble_retrievers(retriever_path)
-
-    def search(self, query: str, category: str, top_k: int = 3):
-        """
-        사용자 쿼리에 따른 문서 검색
-
-        Args:
-            query (str): 사용자 검색어
-            category (str): 검색할 문서 카테고리
-            top_k (int): 반환할 문서 개수
-
-        Returns:
-            list: 관련 문서 리스트
-        """
-        try:
-            if category not in self.ensemble_retrievers:
-                raise ValueError(f"유효하지 않은 카테고리입니다: {category}")
-
-            retriever = self.ensemble_retrievers[category]
-            results = retriever.get_relevant_documents(query)
-            return results[:top_k]
-
-        except Exception as e:
-            print(f"검색 중 오류 발생: {str(e)}")
-            return []
+# .json 파일 경로 가져오기
+retriever_file_paths = glob.glob(
+    "/Users/naeun/bigcontest_chatbot/data/json_retrievers/*.json"
+)
 
 
-def handle_streamlit_input(chain, memory, prompt):
-    try:
-        # 디버깅을 위한 로그 추가
-        st.write("사용자 입력:", prompt)
-        chat_history = memory.load_memory_variables({})["chat_history"]
-        st.write("대화 기록:", chat_history)
-
-        # Chain 실행
-        response = chain(
-            {
-                "user_input": prompt,
-                "chat_history": chat_history,
-                "keyword": st.session_state.get("keywords", ""),
-                "location": st.session_state.get("locations", ""),
-                "min_score": st.session_state.get("score", 4.5),
-                "search_results": "search_results",
-            }
-        )
-
-        # 응답 처리
-        st.markdown(response["output"])
-        st.session_state.messages.append(
-            {"role": "assistant", "content": response["output"]}
-        )
-        manage_chat_history()  # 히스토리 관리 함수 호출
-
-        # 메모리 업데이트
-        memory.save_context({"input": prompt}, {"output": response["output"]})
-
-    except Exception as e:
-        st.error(f"응답 생성 중 오류 발생: {str(e)}")
-        print(f"오류 상세: {str(e)}")  # 디버깅용
+# 리트리버 데이터 로드
+def load_retrievers():
+    if "retriever_data" not in st.session_state:
+        # retrievers.py에서 정의한 함수 호출하여 데이터 로드
+        retriever_data = load_ensemble_retriever_from_json(retriever_file_paths)
+        if retriever_data:
+            st.session_state.retriever_data = retriever_data
+            st.session_state.retrievers = retriever_data  # "retrievers" 키 초기화
+            st.write("모든 JSON 리트리버가 성공적으로 로드되었습니다!")
+        else:
+            st.write("리트리버 로드 실패")
+    else:
+        retriever_data = st.session_state.retriever_data
+    return retriever_data
 
 
+# 리트리버 로드
+retriever_data = load_retrievers()
+
+# # 리트리버 데이터가 로드되었다면 사용
+# if retriever_data:
+#     for key, ensemble_retriever in retriever_data.items():
+#         st.write(f"앙상블 리트리버 ({key}):", ensemble_retriever)
+
+
+# Streamlit main function
 def main():
+    # Streamlit UI 초기화
     initialize_streamlit_ui()
 
-    # st.session_state 변수 초기화
+    # 세션 상태 변수 초기화
     if "memory" not in st.session_state:
-        # ConversationBufferMemory를 사용하여 메모리 초기화
         st.session_state.memory = ConversationBufferMemory(memory_key="chat_history")
 
     if "messages" not in st.session_state:
@@ -129,36 +96,19 @@ def main():
             {"role": "assistant", "content": "어떤 곳을 찾아줄까?"}
         ]
 
-    # 필요한 구성 요소를 초기화
+    # chain 및 retrievers 초기화
     if "chain" not in st.session_state:
-        llm = initialize_llm()  # LLM 초기화
-        prompt_template = get_chat_prompt()  # 프롬프트 템플릿 가져오기
+        llm = initialize_llm()
+        prompt_template = get_chat_prompt()
         st.session_state.chain = create_chain(
             llm, prompt_template, memory=st.session_state.memory
         )
 
-    # retrievers 불러오기
-    retrievers = load_retrievers_from_pkl(file_path)
-    if retrievers:
-        st.session_state.retrievers = retrievers
-        st.write("retrievers 데이터가 세션에 로드되었습니다.")
-    else:
-        st.write("retrievers 데이터 로드 실패")
-
-    # 이후 retrievers를 사용하는 코드 처리 (예: 사용자 질의 처리 등)
-    if "retrievers" in st.session_state:
-        st.write("retrievers 데이터가 세션에 로드되었습니다.")
-    else:
-        st.write("retrievers 데이터가 세션에 로드되지 않았습니다.")
-
-    # 이전 메시지 표시
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+    # 리트리버 로드
+    retrievers = load_retrievers()
 
     # 사용자 입력 처리
     if prompt := st.chat_input("무엇이 궁금하신가요?"):
-        # 사용자 메시지 표시
         st.chat_message("user").markdown(prompt)
         st.session_state.messages.append({"role": "user", "content": prompt})
 

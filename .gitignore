@@ -9,6 +9,7 @@ __pycache__/
 .pkl
 .json
 .index
+.faiss
 
 ### macOS ###
 # General
