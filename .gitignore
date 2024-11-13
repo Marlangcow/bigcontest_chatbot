@@ -1,9 +1,14 @@
+# Created by https://www.toptal.com/developers/gitignore/api/macos,visualstudiocode,python
+# Edit at https://www.toptal.com/developers/gitignore?templates=macos,visualstudiocode,python
+
 *.toml
 .devcontainer
 *.zip
 __pycache__/
 *.pyc
 .pkl
+.json
+.index
 
 ### macOS ###
 # General
