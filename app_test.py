@@ -101,7 +101,7 @@ def main():
 
     # 초기 메시지 표시
     if "initialized" not in st.session_state:
-        st.chat_message("assistant").markdown("어떤 곳을 찾아줄까? 🐬")
+        st.chat_message("assistant").markdown("어떤 곳을 찾아줄까?")
         st.session_state.initialized = True
 
     # 세션 상태 변수 초기화

@@ -8,26 +8,38 @@ GOOGLE_API_KEY = st.secrets["google_api_key"]
 # 파일 경로 설정
 MODULE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# JSON 파일 경로
-FILE_PATHS = {
-    "mct": "/Users/naeun/bigcontest_chatbot/data/mct.json",
-    "month": "/Users/naeun/bigcontest_chatbot/data/month.json",
-    "wkday": "/Users/naeun/bigcontest_chatbot/data/wkday.json",
-    "mop_sentiment": "/Users/naeun/bigcontest_chatbot/data/merge_mop_sentiment.json",
-    "menu": "/Users/naeun/bigcontest_chatbot/data/mct_menus.json",
-    "visit_jeju": "/Users/naeun/bigcontest_chatbot/data/visit_jeju.json",
-    "kakaomap_reviews": "/Users/naeun/bigcontest_chatbot/data/kakaomap_reviews.json",
+PKL_PATHS = {
+    # 데이터베이스 파일 경로
+    "mct_pkl": "./data/faissdb/mct_db.index/index.pkl",
+    "month_pkl": "./data/faissdb/month_db.index/index.pkl",
+    "wkday_pkl": "./data/faissdb/wkday_db.index/index.pkl",
+    "mop_sentiment_pkl": "./data/faissdb/mop_sentiment_db.index/index.pkl",
+    "menu_pkl": "./data/faissdb/menu_db.index/index.pkl",
+    "visit_jeju_pkl": "./data/faissdb/visit_jeju_db.index/index.pkl",
+    "kakaomap_reviews_pkl": "./data/faissdb/kakaomap_reviews_db.index/index.pkl",
 }
 
 # FAISS 인덱스 경로
 INDEX_PATHS = {
-    "mct": "/Users/naeun/bigcontest_chatbot/data/faiss_index/mct_index_pq.faiss",
-    "month": "/Users/naeun/bigcontest_chatbot/data/faiss_index/month_index_pq.faiss",
-    "wkday": "/Users/naeun/bigcontest_chatbot/data/faiss_index/wkday_index_pq.faiss",
-    "mop": "/Users/naeun/bigcontest_chatbot/data/faiss_index/mop_flat_l2.faiss",
-    "menu": "/Users/naeun/bigcontest_chatbot/data/faiss_index/menu.faiss",
-    "visit": "/Users/naeun/bigcontest_chatbot/data/faiss_index/visit_jeju.faiss",
-    "kakaomap_reviews": "/Users/naeun/bigcontest_chatbot/data/faiss_index/kakaomap_reviews.faiss",
+    # 인덱스 파일 경로
+    "mct_index": "./data/faissdb/mct_db.index/index.faiss",
+    "month_index": "./data/faissdb/month_db.index/index.faiss",
+    "wkday_index": "./data/faissdb/wkday_db.index/index.faiss",
+    "mop_index": "./data/faissdb/mop_db.indexindex.faiss",
+    "menus_index": "./data/faissdb/menus_db.index/index.faiss",
+    "visit_index": "./data/faissdb/visit_db.index/index.faiss",
+    "kakaomap_reviews_index": "./data/faissdb/kakaomap_reviews_db.index/index.faiss",
+}
+
+# JSON 파일 경로
+JSON_PATHS = {
+    "mct_json": "/Users/naeun/bigcontest_chatbot/data/mct.json",
+    "month_json": "/Users/naeun/bigcontest_chatbot/data/month.json",
+    "wkday_json": "/Users/naeun/bigcontest_chatbot/data/wkday.json",
+    "mop_sentiment_json": "/Users/naeun/bigcontest_chatbot/data/merge_mop_sentiment.json",
+    "menu_json": "/Users/naeun/bigcontest_chatbot/data/mct_menus.json",
+    "visit_jeju_json": "/Users/naeun/bigcontest_chatbot/data/visit_jeju.json",
+    "kakaomap_reviews_json": "/Users/naeun/bigcontest_chatbot/data/kakaomap_reviews.json",
 }
 
 

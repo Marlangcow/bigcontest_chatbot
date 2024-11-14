@@ -4,6 +4,7 @@ from langchain.schema import Document
 import torch
 from sentence_transformers import util
 from sentence_transformers import SentenceTransformer
+import streamlit as st
 
 # 임베딩 모델 초기화
 embedding = SentenceTransformer("jhgan/ko-sroberta-multitask")
@@ -43,7 +44,6 @@ def get_chatbot_response(user_input, memory, chain, retrievers):
     return output_text
 
 
-# flexible_function_call_search 함수에 retrievers 인자 추가
 def flexible_function_call_search(query, retrievers):
     input_embedding = embedding.encode(query)  # 입력 쿼리 임베딩
 
@@ -77,20 +77,14 @@ def flexible_function_call_search(query, retrievers):
             max(similarities, key=similarities.get)
         ]  # 유사도가 0.5 미만인 경우 가장 유사한 리트리버 선택
 
-    combined_results = {}
+    combined_results = []
     for retriever_key in selected_retrievers:
         retriever = retrievers.get(retriever_key)
         if retriever:
             search_result = retriever.invoke(query)
-            combined_results[retriever_key] = search_result
+            combined_results.extend(search_result)
 
-    # 결과 병합 및 응용 로직
-    merged_results = []
-    for key, docs in combined_results.items():
-        for doc in docs:
-            if doc.page_content not in [
-                result.page_content for result in merged_results
-            ]:
-                merged_results.append(doc)
+    # 중복 제거
+    unique_results = {doc.page_content: doc for doc in combined_results}.values()
 
-    return merged_results
+    return list(unique_results)
