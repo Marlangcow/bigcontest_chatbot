@@ -8,14 +8,8 @@ from functools import wraps
 import streamlit as st
 
 
-class MaxLLMCallsExceeded(Exception):
-    """LLM 최대 호출 횟수 초과 예외"""
-
-    pass
-
-
+# LLM 호출 횟수 제한을 위한 데코레이터
 def limit_llm_calls(func):
-    """LLM 호출 횟수를 제한하는 데코레이터"""
     call_count = 0
     max_calls = 3
 
@@ -31,7 +25,6 @@ def limit_llm_calls(func):
 
 
 def initialize_llm():
-    """LLM을 초기화하는 함수"""
     return ChatGoogleGenerativeAI(
         model="gemini-1.5-flash",
         temperature=0.2,
@@ -45,17 +38,13 @@ def initialize_llm():
     )
 
 
+# LLM 체인 생성 함수
 @limit_llm_calls
 def create_chain(llm, prompt_template, memory: Optional[dict] = None):
-    """
-    LLM 체인을 생성하는 함수
-    호출 횟수가 제한되며, 최대 입력 토큰이 제한됩니다.
-    """
-    # session_state 초기화 및 값 체크
     if "keywords" not in st.session_state:
-        st.session_state["keywords"] = ""  # 기본값 설정
+        st.session_state["keywords"] = "일반"
     if "locations" not in st.session_state:
-        st.session_state["locations"] = ""
+        st.session_state["locations"] = "제주시내"
     if "score" not in st.session_state:
         st.session_state["score"] = 4.5
     if "user_input" not in st.session_state:
@@ -65,18 +54,16 @@ def create_chain(llm, prompt_template, memory: Optional[dict] = None):
     if "search_results" not in st.session_state:
         st.session_state["search_results"] = []
 
-    # 'input_text' 변수를 추가하여 prompt에 전달
-    input_text = st.session_state["user_input"]  # user_input을 input_text로 저장
+    # 'input_text'를 'user_input'으로 변경
+    input_text = st.session_state["user_input"]
 
-    # 입력 텍스트의 토큰 수 확인 및 제한
     prompt = prompt_template.template.format(
         keyword=st.session_state["keywords"],
         location=st.session_state["locations"],
         min_score=st.session_state["score"],
-        user_input=st.session_state["user_input"],
+        user_input=input_text,
         chat_history=st.session_state["chat_history"],
         search_results=st.session_state["search_results"],
-        input_text=input_text,  # 추가된 부분
     )
 
     return LLMChain(
@@ -85,5 +72,5 @@ def create_chain(llm, prompt_template, memory: Optional[dict] = None):
         memory=memory,
         output_parser=StrOutputParser(),
         verbose=True,
-        callbacks=[StreamingStdOutCallbackHandler()],  # 토큰 사용량 모니터링
+        callbacks=[StreamingStdOutCallbackHandler()],
     )

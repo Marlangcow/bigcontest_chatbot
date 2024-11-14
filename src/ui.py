@@ -1,5 +1,9 @@
 import streamlit as st
 
+# st.session_state.memory 초기화
+if "memory" not in st.session_state:
+    st.session_state.memory = None  # 초기값 설정
+
 
 def initialize_streamlit_ui():
     # st.session_state.messages 초기화
@@ -8,19 +12,16 @@ def initialize_streamlit_ui():
             {"role": "assistant", "content": "어떤 곳을 찾아줄까?"}
         ]
 
+    # 이미지 표시
+    display_main_image()
+
     # 제목 및 정보 텍스트 설정
     st.title("🍊감귤톡, 제주도 여행 메이트")
     st.write("")
     st.info("제주도 여행 메이트 감귤톡이 제주도의 방방곡곡을 알려줄게 🏝️")
 
-    # 이미지 표시
-    display_main_image()
-
-    # 메시지 표시
-    display_messages()
-
-    with st.sidebar:
-        setup_sidebar()
+    # 사이드바 설정
+    setup_sidebar()
 
 
 def display_main_image():
@@ -30,14 +31,24 @@ def display_main_image():
 
 
 def setup_sidebar():
-    st.title("🍊감귤톡이 다 찾아줄게🍊")
-    st.write("")
+    st.sidebar.title("🍊감귤톡, 제주도 여행 메이트")
+    st.sidebar.write("")
+    st.sidebar.info("제주도 여행 메이트 감귤톡이 제주도의 방방곡곡을 알려줄게 🏝️")
+    st.sidebar.title("🍊감귤톡이 다 찾아줄게🍊")
+    st.sidebar.write("")
+    setup_common_ui_elements()
+
+
+def setup_common_ui_elements():
+    """사이드바와 메인 UI에서 공통으로 사용되는 요소 설정"""
     setup_keyword_selection()
     setup_location_selection()
     setup_score_selection()
-    st.button("대화 초기화", on_click=clear_chat_history)
-    st.write("")
-    st.caption("📨 감귤톡에 문의하기 [Send email](mailto:happily2bus@gmail.com)")
+    st.sidebar.button("대화 초기화", on_click=clear_chat_history)
+    st.sidebar.write("")
+    st.sidebar.caption(
+        "📨 감귤톡에 문의하기 [Send email](mailto:happily2bus@gmail.com)"
+    )
 
 
 def setup_keyword_selection():
@@ -61,7 +72,7 @@ def setup_keyword_selection():
             "해산물",
             "일식",
         ],
-        key="keywords",
+        key="visit_keywords",
         label_visibility="collapsed",
     )
     st.write("")
@@ -84,7 +95,7 @@ def setup_location_selection():
             "한림",
             "한경",
         ],
-        key="locations",
+        key="visit_locations",
         label_visibility="collapsed",
     )
     st.write("")
@@ -93,18 +104,9 @@ def setup_location_selection():
 def setup_score_selection():
     st.subheader("평점 몇점 이상을 원해?")
     score = st.slider("리뷰 평점", min_value=3.0, max_value=5.0, value=4.5, step=0.05)
-    st.write("")
 
 
-def display_messages():
-    for message in st.session_state.messages:
-        role = "🐬" if message["role"] == "assistant" else "👤"
-        st.write(f"{role} {message['content']}")
-    # 메시지가 없을 경우 기본 메시지 추가
-    if not st.session_state.messages:
-        st.session_state.messages.append(
-            {"role": "assistant", "content": "어떤 곳을 찾아줄까?"}
-        )
+st.write("")
 
 
 def clear_chat_history():

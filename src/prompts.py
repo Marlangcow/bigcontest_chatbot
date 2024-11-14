@@ -43,7 +43,7 @@ def get_chat_prompt():
         대화 기록:
         {chat_history}
 
-        사용자의 질문: {input_text}
+        사용자의 질문: {user_input}
 
         논리적인 사고 후 사용자에게 제공할 답변:
         """,

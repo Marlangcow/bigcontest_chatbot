@@ -1,6 +1,7 @@
 import os
 import google.generativeai as genai
 import streamlit as st
+import faiss
 
 # API 키 설정
 GOOGLE_API_KEY = st.secrets["google_api_key"]
@@ -8,41 +9,28 @@ GOOGLE_API_KEY = st.secrets["google_api_key"]
 # 파일 경로 설정
 MODULE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-PKL_PATHS = {
-    # 데이터베이스 파일 경로
-    "mct_pkl": "./data/faissdb/mct_db.index/index.pkl",
-    "month_pkl": "./data/faissdb/month_db.index/index.pkl",
-    "wkday_pkl": "./data/faissdb/wkday_db.index/index.pkl",
-    "mop_sentiment_pkl": "./data/faissdb/mop_sentiment_db.index/index.pkl",
-    "menu_pkl": "./data/faissdb/menu_db.index/index.pkl",
-    "visit_jeju_pkl": "./data/faissdb/visit_jeju_db.index/index.pkl",
-    "kakaomap_reviews_pkl": "./data/faissdb/kakaomap_reviews_db.index/index.pkl",
-}
-
 # FAISS 인덱스 경로
 INDEX_PATHS = {
-    # 인덱스 파일 경로
-    "mct_index": "./data/faiss_index/mct_index_pq.faiss",
-    "month_index": "./data/faiss_index/month_index_pq.faiss",
-    "wkday_index": "./data/faiss_index/wkday_index_pq.faiss",
-    "mop_index": "./data/faiss_index/mop_flat_l2.faiss",
-    "menus_index": "./data/faiss_index/menu.faiss",
-    "visit_index": "./data/faiss_index/visit_jeju.faiss",
-    "kakaomap_reviews_index": "./data/faiss_index/kakaomap_reviews.faiss",
+    "mct_db_index_cpu": "./data/faiss_db_index_cpu/mct_db_index_cpu.faiss",
+    "month_db_index_cpu": "./data/faiss_db_index_cpu/month_db_index_cpu.faiss",
+    "wkday_db_index_cpu": "./data/faiss_db_index_cpu/wkday_db_index_cpu.faiss",
+    "mob_db_index_cpu": "./data/faiss_db_index_cpu/mob_db_index_cpu.faiss",
+    "menus_db_index_cpu": "./data/faiss_db_index_cpu/menus_db_index_cpu.faiss",
+    "visit_db_index_cpu": "./data/faiss_db_index_cpu/visit_db_index_cpu.faiss",
+    "kakaomap_reviews_index_cpu": "./data/faiss_db_index_cpu/kakaomap_reviews_index_cpu.faiss",
 }
 
 # JSON 파일 경로
 JSON_PATHS = {
     # json 리트리버 파일 경로
-    "mct_json": "/Users/naeun/bigcontest_chatbot/data/json_retrievers/mct.json",
-    "month_json": "/Users/naeun/bigcontest_chatbot/data/json_retrievers/month.json",
-    "wkday_json": "/Users/naeun/bigcontest_chatbot/data/json_retrievers/wkday.json",
-    "mop_sentiment_json": "/Users/naeun/bigcontest_chatbot/data/json_retrievers/merge_mop_sentiment.json",
-    "menu_json": "/Users/naeun/bigcontest_chatbot/data/json_retrievers/mct_menus.json",
-    "visit_jeju_json": "/Users/naeun/bigcontest_chatbot/data/json_retrievers/visit_jeju.json",
-    "kakaomap_reviews_json": "/Users/naeun/bigcontest_chatbot/data/json_retrievers/kakaomap_reviews.json",
+    "mct_json": "./data/mct.json",
+    "month_json": "./data/month.json",
+    "wkday_json": "./data/wkday.json",
+    "mop_sentiment_json": "./data/merge_mop_sentiment.json",
+    "menu_json": "./data/mct_menus.json",
+    "visit_jeju_json": "./data/visit_jeju.json",
+    "kakaomap_reviews_json": "./data/kakaomap_reviews.json",
 }
-
 
 # 위치 매핑
 LOCATIONS = {
@@ -57,7 +45,6 @@ LOCATIONS = {
     "한림": "한림",
     "한경": "한경",
 }
-
 
 # 키워드 매핑
 KEYWORD_MAP = {
