@@ -12,6 +12,7 @@ embedding = SentenceTransformer("jhgan/ko-sroberta-multitask")
 
 def get_chatbot_response(user_input, memory, chain, retrievers):
     search_results = flexible_function_call_search(user_input, retrievers)
+    print(f"검색 결과: {search_results}")  # 디버깅 정보 추가
     search_results_str = "\n".join([doc.page_content for doc in search_results]).strip()
 
     if not search_results_str:

@@ -22,24 +22,25 @@ PKL_PATHS = {
 # FAISS 인덱스 경로
 INDEX_PATHS = {
     # 인덱스 파일 경로
-    "mct_index": "./data/faissdb/mct_db.index/index.faiss",
-    "month_index": "./data/faissdb/month_db.index/index.faiss",
-    "wkday_index": "./data/faissdb/wkday_db.index/index.faiss",
-    "mop_index": "./data/faissdb/mop_db.indexindex.faiss",
-    "menus_index": "./data/faissdb/menus_db.index/index.faiss",
-    "visit_index": "./data/faissdb/visit_db.index/index.faiss",
-    "kakaomap_reviews_index": "./data/faissdb/kakaomap_reviews_db.index/index.faiss",
+    "mct_index": "./data/faiss_index/mct_index_pq.faiss",
+    "month_index": "./data/faiss_index/month_index_pq.faiss",
+    "wkday_index": "./data/faiss_index/wkday_index_pq.faiss",
+    "mop_index": "./data/faiss_index/mop_flat_l2.faiss",
+    "menus_index": "./data/faiss_index/menu.faiss",
+    "visit_index": "./data/faiss_index/visit_jeju.faiss",
+    "kakaomap_reviews_index": "./data/faiss_index/kakaomap_reviews.faiss",
 }
 
 # JSON 파일 경로
 JSON_PATHS = {
-    "mct_json": "/Users/naeun/bigcontest_chatbot/data/mct.json",
-    "month_json": "/Users/naeun/bigcontest_chatbot/data/month.json",
-    "wkday_json": "/Users/naeun/bigcontest_chatbot/data/wkday.json",
-    "mop_sentiment_json": "/Users/naeun/bigcontest_chatbot/data/merge_mop_sentiment.json",
-    "menu_json": "/Users/naeun/bigcontest_chatbot/data/mct_menus.json",
-    "visit_jeju_json": "/Users/naeun/bigcontest_chatbot/data/visit_jeju.json",
-    "kakaomap_reviews_json": "/Users/naeun/bigcontest_chatbot/data/kakaomap_reviews.json",
+    # json 리트리버 파일 경로
+    "mct_json": "/Users/naeun/bigcontest_chatbot/data/json_retrievers/mct.json",
+    "month_json": "/Users/naeun/bigcontest_chatbot/data/json_retrievers/month.json",
+    "wkday_json": "/Users/naeun/bigcontest_chatbot/data/json_retrievers/wkday.json",
+    "mop_sentiment_json": "/Users/naeun/bigcontest_chatbot/data/json_retrievers/merge_mop_sentiment.json",
+    "menu_json": "/Users/naeun/bigcontest_chatbot/data/json_retrievers/mct_menus.json",
+    "visit_jeju_json": "/Users/naeun/bigcontest_chatbot/data/json_retrievers/visit_jeju.json",
+    "kakaomap_reviews_json": "/Users/naeun/bigcontest_chatbot/data/json_retrievers/kakaomap_reviews.json",
 }
 
 

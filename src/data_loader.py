@@ -54,7 +54,28 @@ if "chain" not in st.session_state:
     st.session_state.chain = None  # 또는 적절한 초기값으로 설정
 
 
-# FAISS 인덱스를 로드하고 초기화하는 함수
+def load_faiss_index(index_name):
+    index_path = INDEX_PATHS.get(index_name)
+    if not index_path or not os.path.exists(index_path):
+        raise FileNotFoundError(
+            f"Index file for '{index_name}' not found at {index_path}"
+        )
+
+    try:
+        # mop 인덱스는 FlatL2로 로드
+        if "mop" in index_name:
+            print(f"Loading FlatL2 index from {index_path}")
+            index = faiss.read_index(index_path)  # FlatL2 인덱스 로드
+        else:  # 나머지 인덱스들은 PQ 인덱스로 로드
+            print(f"Loading PQ index from {index_path}")
+            index = faiss.read_index(index_path)  # PQ 인덱스 로드
+    except Exception as e:
+        raise Exception(f"Error loading index '{index_name}' from {index_path}: {e}")
+
+    return index
+
+
+# FAISS 인덱스를 로드하고 retriever 객체 생성하는 함수
 def load_faiss_indexes_with_retriever(INDEX_PATHS, data, embedding_function):
     retrievers = {}
     for key, path in INDEX_PATHS.items():
@@ -66,9 +87,12 @@ def load_faiss_indexes_with_retriever(INDEX_PATHS, data, embedding_function):
         if os.path.exists(abs_path):
             try:
                 # FAISS 인덱스를 로드
-                index = faiss.read_index(abs_path)
+                if "mop" in key:  # mop 인덱스는 FlatL2로 로드
+                    index = faiss.read_index(abs_path)  # FlatL2 인덱스 로딩
+                else:  # 나머지 인덱스들은 PQ 인덱스로 로드
+                    index = faiss.read_index(abs_path)  # PQ 인덱스 로딩
 
-                # 문서 생성
+                # 문서 생성 (data에 맞는 문서 생성)
                 documents = create_documents(data)[f"{key}_docs"]
 
                 # FAISS VectorStore 객체 생성
