@@ -2,16 +2,21 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=macos,visualstudiocode,python
 
 *.toml
-.devcontainer
+*.devcontainer
 *.zip
-__pycache__/
 *.pyc
-.pkl
-.json
-.index
-
+*.pkl
+*.json
+*.index
+*.csv
+*.xls
+*.xlsx
 models/.locks/
 models/models--jhgan--ko-sroberta-multitask/.no_exist/
+data/raw/
+
+colab_code.py
+
 
 # Ignore .faiss files
 *.faiss
@@ -32,7 +37,6 @@ models/models--jhgan--ko-sroberta-multitask/blobs/e0143341f5e4653b7ece14cf0685f5
 
 # Icon must end with two \r
 Icon
-
 
 # Thumbnails
 ._*
