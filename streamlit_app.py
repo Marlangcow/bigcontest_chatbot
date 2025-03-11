@@ -5,13 +5,15 @@ import pickle
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 import datetime
+import time
+import matplotlib.pyplot as plt
 
 
 # 데이터 로드 함수 수정
 @st.cache_resource
 def load_recommendation_data():
     try:
-        # 이미 전처리된 CSV 파일 로드
+        # CSV 파일 로드
         merged_data = pd.read_csv("notebooks/processed_tourism_data.csv")
 
         # TF-IDF 벡터화
@@ -48,7 +50,7 @@ except Exception as e:
 
 
 # 앱 제목
-st.title("제주도 관광지 추천 시스템")
+st.title("🏝️제주도 관광지 추천 시스템🏝️")
 
 # 사이드바 - 필터링 옵션
 st.sidebar.header("필터링 옵션")
@@ -573,3 +575,19 @@ elif recommendation_type == "맞춤 추천":
 # 푸터
 st.markdown("---")
 st.markdown("© 제주도 관광지 추천 시스템")
+
+plt.figure(figsize=(12, 8))
+for i in range(4):
+    plt.plot(
+        list(hourly_cols.values()),
+        cluster_centers[i],
+        marker="o",
+        label=f"클러스터 {i}",
+    )
+
+plt.title("클러스터별 시간대 방문 패턴")
+plt.xlabel("시간대")
+plt.ylabel("방문 비율")
+plt.legend()
+plt.grid(True)
+plt.show()
