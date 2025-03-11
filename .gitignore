@@ -11,6 +11,11 @@
 *.csv
 *.xls
 *.xlsx
+*.static
+*.vscode
+*.gitattributes
+*.gitignore
+
 models/.locks/
 models/models--jhgan--ko-sroberta-multitask/.no_exist/
 
