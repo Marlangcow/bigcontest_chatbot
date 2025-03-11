@@ -15,6 +15,7 @@
 *.vscode
 *.gitattributes
 *.gitignore
+*.streamlit
 
 models/.locks/
 models/models--jhgan--ko-sroberta-multitask/.no_exist/
