@@ -4,8 +4,7 @@
 
 -> [사이트 보러가기](https://jeju-matjip.streamlit.app/)
 
-<img width="1377" alt="Image" src="https://github.com/user-attachments/assets/2b817bfd-f142-49b9-87cb-37cdf6d7e446" />
-
+![Image](https://github.com/user-attachments/assets/1a360ff5-ab03-400f-9ad2-826281dbff3e)
 
 
 ## 주요 기능
