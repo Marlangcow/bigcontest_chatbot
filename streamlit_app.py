@@ -5,13 +5,15 @@ import pickle
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 import datetime
+import time
+import matplotlib.pyplot as plt
 
 
 # 데이터 로드 함수 수정
 @st.cache_resource
 def load_recommendation_data():
     try:
-        # CSV 파일에서 데이터 로드
+        # CSV 파일 로드
         merged_data = pd.read_csv("notebooks/processed_tourism_data.csv")
 
         # TF-IDF 벡터화
@@ -21,7 +23,6 @@ def load_recommendation_data():
         # 유사도 행렬 계산
         similarity_matrix = cosine_similarity(tfidf_matrix)
 
-        # 데이터 반환
         return {
             "merged_data": merged_data,
             "tfidf_vectorizer": tfidf_vectorizer,
@@ -39,35 +40,6 @@ try:
         merged_data = recommendation_data["merged_data"]
         tfidf_vectorizer = recommendation_data["tfidf_vectorizer"]
         similarity_matrix = recommendation_data["similarity_matrix"]
-
-        # 데이터 컬럼 확인 및 처리
-        print("데이터 컬럼:", merged_data.columns.tolist())
-
-        # '지역' 컬럼이 없는 경우 대체 컬럼 찾기
-        if "지역" not in merged_data.columns:
-            # 가능한 대체 컬럼 확인
-            region_candidates = ["REGION", "region", "리전", "지역명", "AREA", "area"]
-            region_col = None
-
-            for col in region_candidates:
-                if col in merged_data.columns:
-                    region_col = col
-                    break
-
-            # ADDR 컬럼에서 지역 추출
-            if region_col is None and "ADDR" in merged_data.columns:
-                # 주소에서 첫 번째 부분 추출 (예: '제주특별자치도 서귀포시' -> '서귀포시')
-                merged_data["지역"] = merged_data["ADDR"].str.split(" ").str[1]
-                print("주소에서 지역 정보를 추출했습니다.")
-            elif region_col:
-                # 대체 컬럼 사용
-                merged_data["지역"] = merged_data[region_col]
-                print(f"'{region_col}' 컬럼을 '지역' 컬럼으로 사용합니다.")
-            else:
-                # 기본값 설정
-                merged_data["지역"] = "제주"
-                print("지역 정보가 없어 기본값 '제주'를 설정했습니다.")
-
         st.success("추천 시스템 데이터가 성공적으로 로드되었습니다!")
     else:
         st.error("추천 시스템 데이터를 로드할 수 없습니다.")
@@ -76,8 +48,9 @@ except Exception as e:
     st.error(f"데이터 로드 중 오류가 발생했습니다: {e}")
     st.stop()
 
+
 # 앱 제목
-st.title("제주도 관광지 추천 시스템")
+st.title("🏝️제주도 관광지 추천 시스템🏝️")
 
 # 사이드바 - 필터링 옵션
 st.sidebar.header("필터링 옵션")
@@ -184,6 +157,7 @@ recommendation_type = st.radio(
     key="recommendation_type",
 )
 
+# 추천 타입별 로직
 if recommendation_type == "인기 관광지":
     # 필터링
     filtered_data = merged_data.copy()
@@ -268,11 +242,11 @@ if recommendation_type == "인기 관광지":
         ]
 
     # 인기도 순으로 정렬
-    top_spots = filtered_data.sort_values("popularity_score", ascending=False).head(10)
+    top_spots = filtered_data.sort_values("popularity_score", ascending=False).head(5)
 
     # 결과 표시
     if len(top_spots) > 0:
-        st.subheader("인기 관광지 TOP 10")
+        st.subheader("인기 관광지 TOP 5")
         for i, (idx, row) in enumerate(top_spots.iterrows()):
             with st.expander(f"{i+1}. {row['AREA_NM']} ({row['CL_NM']})"):
                 col1, col2 = st.columns(2)
@@ -342,27 +316,69 @@ if recommendation_type == "인기 관광지":
         st.info("조건에 맞는 관광지가 없습니다. 필터링 조건을 변경해보세요.")
 
 elif recommendation_type == "유사 관광지 찾기":
-    # 관광지 선택
-    spot_names = merged_data["AREA_NM"].unique().tolist()
-    selected_spot = st.selectbox("관광지 선택", spot_names, key="similar_spot")
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        # 관광지 선택
+        spot_names = merged_data["AREA_NM"].unique().tolist()
+        selected_spot = st.selectbox("관광지 선택", spot_names, key="similar_spot")
+
+    with col2:
+        # 유사도 기준 선택 추가
+        similarity_criteria = st.multiselect(
+            "유사도 기준 선택",
+            ["카테고리", "방문 패턴", "키워드", "성수기"],
+            default=["카테고리", "키워드"],
+            key="similarity_criteria",
+        )
 
     if selected_spot:
         # 선택한 관광지의 인덱스 찾기
         spot_idx = merged_data[merged_data["AREA_NM"] == selected_spot].index[0]
 
-        # 유사도 계산
-        spot_similarities = similarity_matrix[spot_idx]
+        # 유사도 가중치 적용
+        weights = {"카테고리": 0.3, "방문 패턴": 0.3, "키워드": 0.2, "성수기": 0.2}
+
+        # 선택된 기준에 따라 유사도 계산
+        final_similarities = np.zeros(len(merged_data))
+        total_weight = 0
+
+        for criterion in similarity_criteria:
+            weight = weights[criterion]
+            total_weight += weight
+            if criterion == "카테고리":
+                final_similarities += weight * (
+                    merged_data["CL_NM"] == merged_data.loc[spot_idx, "CL_NM"]
+                ).astype(float)
+            elif criterion == "방문 패턴":
+                visit_pattern_similarity = (
+                    1
+                    - np.abs(
+                        merged_data["WEEKEND_PREFERENCE"]
+                        - merged_data.loc[spot_idx, "WEEKEND_PREFERENCE"]
+                    )
+                    / 2
+                )
+                final_similarities += weight * visit_pattern_similarity
+            elif criterion == "키워드":
+                final_similarities += weight * similarity_matrix[spot_idx]
+            elif criterion == "성수기":
+                final_similarities += weight * (
+                    merged_data["PEAK_SEASON"]
+                    == merged_data.loc[spot_idx, "PEAK_SEASON"]
+                ).astype(float)
+
+        # 가중치 정규화
+        if total_weight > 0:
+            final_similarities /= total_weight
 
         # 유사한 관광지 인덱스 (자기 자신 제외)
-        similar_indices = spot_similarities.argsort()[::-1][1:11]
-
-        # 유사한 관광지 정보
+        similar_indices = final_similarities.argsort()[::-1][1:11]
         similar_spots = merged_data.iloc[similar_indices]
 
         # 결과 표시
         st.subheader(f"{selected_spot}와(과) 유사한 관광지")
         for i, (idx, row) in enumerate(similar_spots.iterrows()):
-            similarity_score = spot_similarities[idx]
+            similarity_score = final_similarities[idx]
             with st.expander(
                 f"{i+1}. {row['AREA_NM']} (유사도: {similarity_score:.2f})"
             ):
@@ -558,4 +574,20 @@ elif recommendation_type == "맞춤 추천":
 
 # 푸터
 st.markdown("---")
-st.markdown("© 2023 제주도 관광지 추천 시스템")
+st.markdown("© 제주도 관광지 추천 시스템")
+
+plt.figure(figsize=(12, 8))
+for i in range(4):
+    plt.plot(
+        list(hourly_cols.values()),
+        cluster_centers[i],
+        marker="o",
+        label=f"클러스터 {i}",
+    )
+
+plt.title("클러스터별 시간대 방문 패턴")
+plt.xlabel("시간대")
+plt.ylabel("방문 비율")
+plt.legend()
+plt.grid(True)
+plt.show()
