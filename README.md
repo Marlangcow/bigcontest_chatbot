@@ -2,6 +2,12 @@
 
 스트림릿을 활용한 제주도 맛집 추천 웹 애플리케이션입니다.
 
+-> [사이트 보러가기](https://jeju-matjip.streamlit.app/)
+
+<img width="1377" alt="Image" src="https://github.com/user-attachments/assets/2b817bfd-f142-49b9-87cb-37cdf6d7e446" />
+
+
+
 ## 주요 기능
 
 ### 추천 엔진 (recommend.py)
