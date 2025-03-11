@@ -4,11 +4,13 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.neighbors import NearestNeighbors
 import streamlit as st
 
+file_url = st.secrets["google_drive"]["csv_url"]
+
 
 # 🔹 데이터 로드
 @st.cache_resource
 def load_data():
-    df = pd.read_csv("/Users/naeun/working/bigcontest_chatbot/notebooks/mct_data.csv")
+    df = pd.read_csv(file_url)
 
     # 중복된 가맹점 제거 (같은 가게가 여러 번 등장하는 문제 해결)
     df_unique = df.groupby("MCT_NM").first().reset_index()
